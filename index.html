@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>P&L Ledger</title>
+
+<!-- PWA / iOS install metadata -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0F1A24" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="P&L Ledger" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" href="icon-192.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #0F1A24;
+    --bg-strip: #0B1420;
+    --surface: #16232F;
+    --cell: #16232F;
+    --cell-hover: #1B2B38;
+    --line: #233241;
+    --line-soft: #1D2A36;
+    --text: #EDEEE9;
+    --muted: #8A97A3;
+    --faint: #5A6875;
+    --green: #3FB68B;
+    --green-bg: #12291F;
+    --green-bg-hover: #163526;
+    --red: #E2604F;
+    --red-bg: #2A1717;
+    --red-bg-hover: #331B1B;
+    --gold: #C9A227;
+    --serif: 'Fraunces', Georgia, serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { min-height: 100vh; min-height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  input, textarea { font: inherit; color: inherit; }
+
+  .app { display: flex; min-height: 100vh; min-height: 100dvh; }
+  .binding {
+    width: 28px; flex-shrink: 0; background: var(--bg-strip); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; padding: 24px 0;
+  }
+  .binding .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); margin: 11px 0; }
+  @media (max-width: 640px) { .binding { display: none; } }
+
+  .main { flex: 1; max-width: 1100px; margin: 0 auto; padding: 28px 18px 60px; width: 100%; }
+  @media (min-width: 640px) { .main { padding: 32px 32px 60px; } }
+
+  .header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+  .eyebrow { display: flex; align-items: center; gap: 6px; color: var(--gold); font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 4px; }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: 32px; margin: 0; }
+  .alltime { margin-top: 8px; font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  .savestate { margin-left: 10px; color: var(--faint); }
+
+  .monthnav { display: flex; align-items: center; gap: 10px; }
+  .navbtn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+  .navbtn:active { background: var(--surface); }
+  .monthlabel { font-family: var(--serif); font-size: 18px; width: 170px; text-align: center; }
+
+  .layout { display: grid; grid-template-columns: 1fr; gap: 28px; }
+  @media (min-width: 980px) { .layout { grid-template-columns: 1fr 300px; } }
+
+  .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8px; }
+  .dow div { text-align: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); padding-bottom: 6px; }
+
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .cell { min-height: 88px; background: var(--cell); text-align: left; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+  .cell.empty { background: var(--bg); }
+  .cell.hasdata:not(.empty) { cursor: pointer; }
+  .cell:not(.empty):active { filter: brightness(1.1); }
+  .cell.win { background: var(--green-bg); }
+  .cell.loss { background: var(--red-bg); }
+  .cell.blank:not(.empty) { background: var(--cell); }
+  .daynum { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .daynum.today { color: var(--gold); font-weight: 600; }
+  .pnlfig { font-family: var(--mono); font-size: 13px; line-height: 1.2; }
+  .pnlfig.pos { color: var(--green); }
+  .pnlfig.neg { color: var(--red); }
+  .tradecount { font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-top: 1px; }
+  .notedot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .panel + .panel { margin-top: 20px; }
+  .paneltitle { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px; }
+  .statrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
+  .statrow:last-child { border-bottom: none; }
+  .statrow .label { color: var(--muted); }
+  .statrow .value { font-family: var(--mono); }
+
+  .goalbar { height: 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+  .goalbar > div { height: 100%; background: var(--gold); transition: width .3s ease; }
+  .goalnums { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .goalset { font-family: var(--mono); font-size: 12px; color: var(--gold); }
+  .goalinput-row { display: flex; gap: 8px; }
+  .goalinput { flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-family: var(--mono); }
+  .goalinput:focus { outline: none; border-color: var(--gold); }
+  .goalsave { background: var(--gold); color: var(--bg); font-weight: 600; border-radius: 6px; padding: 7px 12px; font-size: 12px; }
+
+  .ddmeta { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .ddempty { font-size: 12px; color: var(--faint); }
+
+  /* modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; width: 100%; max-width: 380px; padding: 20px; }
+  .modalhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modaldate { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .closebtn { color: var(--faint); font-size: 20px; line-height: 1; }
+  .flabel { display: block; font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+  .finput { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 17px; }
+  .finput:focus { outline: none; border-color: var(--gold); }
+  #f-trades { font-size: 15px; }
+  textarea.finput { font-family: var(--sans); font-size: 14px; resize: none; }
+  .modalbtns { display: flex; gap: 8px; }
+  .btn-save { flex: 1; background: var(--gold); color: var(--bg); font-weight: 600; border-radius: 7px; padding: 11px; font-size: 14px; }
+  .btn-clear { padding: 11px 16px; border: 1px solid var(--line); border-radius: 7px; font-size: 14px; color: var(--muted); }
+
+  .installtip { display: none; }
+  .installtip.show { display: block; background: var(--surface); border: 1px solid var(--gold); border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; font-size: 13px; color: var(--muted); }
+  .installtip b { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="binding" id="binding"></div>
+    <div class="main">
+
+      <div class="installtip" id="installtip">
+        📲 <b>Install this app:</b> tap the Share icon in Safari, then "Add to Home Screen."
+      </div>
+
+      <div class="header">
+        <div>
+          <div class="eyebrow">📓 Ledger</div>
+          <h1>P&amp;L Ledger</h1>
+          <div class="alltime">All-time <span id="alltime-val"></span><span class="savestate" id="savestate"></span></div>
+        </div>
+        <div class="monthnav">
+          <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
+          <div class="monthlabel" id="monthlabel"></div>
+          <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div>
+          <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+          <div class="grid" id="grid"></div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <div class="paneltitle">This month</div>
+            <div id="stats"></div>
+          </div>
+
+          <div class="panel">
+            <div class="paneltitle">🎯 Monthly goal</div>
+            <div id="goalpanel"></div>
+          </div>
+
+          <div class="panel">
+            <div class="paneltitle">📉 Drawdown</div>
+            <div id="drawdown"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" style="display:none">
+    <div class="modal">
+      <div class="modalhead">
+        <div class="modaldate" id="modaldate"></div>
+        <button class="closebtn" id="closemodal">✕</button>
+      </div>
+      <label class="flabel">P&amp;L</label>
+      <input class="finput" id="f-pnl" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
+      <label class="flabel">Trades</label>
+      <input class="finput" id="f-trades" type="number" min="0" placeholder="0" inputmode="numeric" />
+      <label class="flabel">Journal note</label>
+      <textarea class="finput" id="f-note" rows="3" placeholder="Risk, outcome, emotion…"></textarea>
+      <div class="modalbtns">
+        <button class="btn-save" id="savebtn">Save</button>
+        <button class="btn-clear" id="clearbtn">Clear</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const STORE_ENTRIES = "pnlledger.entries";
+  const STORE_GOALS = "pnlledger.goals";
+
+  let entries = JSON.parse(localStorage.getItem(STORE_ENTRIES) || "{}");
+  let goals = JSON.parse(localStorage.getItem(STORE_GOALS) || "{}");
+  let cursor = new Date();
+  cursor.setDate(1);
+  let activeKey = null;
+
+  const pad2 = n => String(n).padStart(2, "0");
+  const dayKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const monthKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+
+  function fmtMoney(n, forceSign = true) {
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    if (n === 0) return "$0.00";
+    const abs = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const sign = n > 0 ? (forceSign ? "+" : "") : "−";
+    return `${sign}$${abs}`;
+  }
+
+  function persistEntries() {
+    document.getElementById("savestate").textContent = " saving…";
+    localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
+    setTimeout(() => { document.getElementById("savestate").textContent = " saved"; }, 150);
+    setTimeout(() => { document.getElementById("savestate").textContent = ""; }, 1000);
+  }
+  function persistGoals() { localStorage.setItem(STORE_GOALS, JSON.stringify(goals)); }
+
+  // binding strip dots
+  const binding = document.getElementById("binding");
+  for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "dot"; binding.appendChild(d); }
+
+  function computeStats() {
+    const mKey = monthKey(cursor);
+    const monthEntries = Object.keys(entries).filter(k => k.startsWith(mKey)).sort()
+      .map(k => ({ date: k, ...entries[k] }));
+    const trading = monthEntries.filter(e => e.pnl !== null && e.pnl !== undefined);
+    const wins = trading.filter(e => e.pnl > 0);
+    const losses = trading.filter(e => e.pnl < 0);
+    const totalPnl = trading.reduce((s,e)=>s+e.pnl,0);
+    const grossWin = wins.reduce((s,e)=>s+e.pnl,0);
+    const grossLoss = Math.abs(losses.reduce((s,e)=>s+e.pnl,0));
+    const winRate = trading.length ? (wins.length/trading.length)*100 : null;
+    const profitFactor = grossLoss > 0 ? grossWin/grossLoss : (grossWin > 0 ? Infinity : null);
+    const avgWin = wins.length ? grossWin/wins.length : 0;
+    const avgLoss = losses.length ? grossLoss/losses.length : 0;
+    const expectancy = trading.length ? (winRate/100)*avgWin - (1-winRate/100)*avgLoss : null;
+    const avgPnl = trading.length ? totalPnl/trading.length : null;
+    const totalTrades = trading.reduce((s,e)=>s+(e.trades||0),0);
+
+    let running = 0, peak = 0;
+    const dd = trading.map(e => {
+      running += e.pnl; peak = Math.max(peak, running);
+      return { date: e.date.slice(8), cumulative: running, drawdown: running - peak };
+    });
+    const maxDrawdown = dd.length ? Math.min(...dd.map(x=>x.drawdown)) : 0;
+
+    return { totalPnl, winRate, profitFactor, expectancy, avgPnl, totalTrades, dd, maxDrawdown };
+  }
+
+  function renderStats() {
+    const s = computeStats();
+    const pnlColor = s.totalPnl >= 0 ? "var(--green)" : "var(--red)";
+    const expColor = (s.expectancy||0) >= 0 ? "var(--green)" : "var(--red)";
+    const avgColor = (s.avgPnl||0) >= 0 ? "var(--green)" : "var(--red)";
+    document.getElementById("stats").innerHTML = `
+      <div class="statrow"><span class="label">Total P&amp;L</span><span class="value" style="color:${pnlColor}">${fmtMoney(s.totalPnl)}</span></div>
+      <div class="statrow"><span class="label">Win rate</span><span class="value">${s.winRate===null?"—":s.winRate.toFixed(0)+"%"}</span></div>
+      <div class="statrow"><span class="label">Profit factor</span><span class="value">${s.profitFactor===null?"—":(s.profitFactor===Infinity?"∞":s.profitFactor.toFixed(2))}</span></div>
+      <div class="statrow"><span class="label">Expectancy</span><span class="value" style="color:${expColor}">${s.expectancy===null?"—":fmtMoney(s.expectancy)}</span></div>
+      <div class="statrow"><span class="label">Avg P&amp;L / day</span><span class="value" style="color:${avgColor}">${s.avgPnl===null?"—":fmtMoney(s.avgPnl)}</span></div>
+      <div class="statrow"><span class="label">Trades logged</span><span class="value">${s.totalTrades}</span></div>
+    `;
+
+    // goal panel
+    const mKey = monthKey(cursor);
+    const target = goals[mKey];
+    const gp = document.getElementById("goalpanel");
+    if (target) {
+      const pct = Math.max(0, Math.min(100, (s.totalPnl/target)*100));
+      gp.innerHTML = `
+        <div class="goalnums"><span>${fmtMoney(s.totalPnl,false)}</span><span>${fmtMoney(target,false)}</span></div>
+        <div class="goalbar"><div style="width:${pct}%"></div></div>
+        <button class="goalset" id="editgoal" style="margin-top:8px">edit target</button>
+      `;
+      document.getElementById("editgoal").onclick = () => showGoalInput(target);
+    } else {
+      gp.innerHTML = `<button class="goalset" id="setgoal">+ set a target for ${MONTHS[cursor.getMonth()]}</button>`;
+      document.getElementById("setgoal").onclick = () => showGoalInput("");
+    }
+
+    // drawdown
+    const dd = document.getElementById("drawdown");
+    if (s.dd.length > 1) {
+      dd.innerHTML = renderDrawdownSvg(s.dd) + `<div class="ddmeta">Max drawdown: <span style="color:var(--red)">${fmtMoney(s.maxDrawdown)}</span></div>`;
+    } else {
+      dd.innerHTML = `<div class="ddempty">Log a few days to see your drawdown curve.</div>`;
+    }
+  }
+
+  function showGoalInput(current) {
+    const gp = document.getElementById("goalpanel");
+    gp.innerHTML = `
+      <div class="goalinput-row">
+        <input class="goalinput" id="goalinput" type="number" placeholder="Target $" value="${current}" inputmode="decimal" />
+        <button class="goalsave" id="goalsavebtn">Set</button>
+      </div>
+    `;
+    const input = document.getElementById("goalinput");
+    input.focus();
+    const save = () => {
+      const val = parseFloat(input.value);
+      const mKey = monthKey(cursor);
+      if (!isNaN(val) && val > 0) goals[mKey] = val; else delete goals[mKey];
+      persistGoals();
+      renderStats();
+    };
+    document.getElementById("goalsavebtn").onclick = save;
+    input.addEventListener("keydown", e => { if (e.key === "Enter") save(); });
+  }
+
+  function renderDrawdownSvg(dd) {
+    const w = 260, h = 120, pad = 6;
+    const vals = dd.map(d => d.drawdown);
+    const min = Math.min(...vals, 0), max = Math.max(...vals, 0);
+    const range = (max - min) || 1;
+    const stepX = (w - pad*2) / (dd.length - 1);
+    const zeroY = pad + (max - 0) / range * (h - pad*2);
+    const pts = dd.map((d,i) => {
+      const x = pad + i*stepX;
+      const y = pad + (max - d.drawdown) / range * (h - pad*2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:120px" preserveAspectRatio="none">
+      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${w}" y2="${zeroY.toFixed(1)}" stroke="#233241" stroke-width="1" />
+      <polyline points="${pts}" fill="none" stroke="#E2604F" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" />
+    </svg>`;
+  }
+
+  function renderGrid() {
+    document.getElementById("monthlabel").textContent = `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
+    const year = cursor.getFullYear(), month = cursor.getMonth();
+    const first = new Date(year, month, 1);
+    const startOffset = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const cells = [];
+    for (let i=0;i<startOffset;i++) cells.push(null);
+    for (let d=1; d<=daysInMonth; d++) cells.push(new Date(year, month, d));
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    const todayKey = dayKey(new Date());
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
+    cells.forEach(d => {
+      const cell = document.createElement(d ? "button" : "div");
+      if (!d) { cell.className = "cell empty"; grid.appendChild(cell); return; }
+      const key = dayKey(d);
+      const entry = entries[key];
+      const hasPnl = entry && entry.pnl !== null && entry.pnl !== undefined;
+      cell.className = "cell " + (hasPnl ? (entry.pnl >= 0 ? "win" : "loss") : "blank");
+      cell.type = "button";
+      const isToday = key === todayKey;
+      let html = `<span class="daynum ${isToday?'today':''}">${pad2(d.getDate())}</span>`;
+      if (hasPnl) {
+        html += `<div><div class="pnlfig ${entry.pnl>=0?'pos':'neg'}">${fmtMoney(entry.pnl)}</div><div class="tradecount">${entry.trades||0} trade${entry.trades===1?"":"s"}</div></div>`;
+      } else {
+        html += `<div></div>`;
+      }
+      if (entry && entry.note) html += `<span class="notedot"></span>`;
+      cell.innerHTML = html;
+      cell.onclick = () => openDay(d, key);
+      grid.appendChild(cell);
+    });
+  }
+
+  function renderAllTime() {
+    const total = Object.values(entries).reduce((s,e)=>s+(e.pnl||0),0);
+    const el = document.getElementById("alltime-val");
+    el.textContent = fmtMoney(total);
+    el.style.color = total >= 0 ? "var(--green)" : "var(--red)";
+  }
+
+  function renderAll() { renderGrid(); renderStats(); renderAllTime(); }
+
+  function openDay(d, key) {
+    activeKey = key;
+    const entry = entries[key] || {};
+    document.getElementById("modaldate").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    document.getElementById("f-pnl").value = entry.pnl ?? "";
+    document.getElementById("f-trades").value = entry.trades ?? "";
+    document.getElementById("f-note").value = entry.note ?? "";
+    document.getElementById("overlay").style.display = "flex";
+    setTimeout(() => document.getElementById("f-pnl").focus(), 50);
+  }
+  function closeModal() { document.getElementById("overlay").style.display = "none"; activeKey = null; }
+
+  document.getElementById("closemodal").onclick = closeModal;
+  document.getElementById("overlay").addEventListener("click", e => { if (e.target.id === "overlay") closeModal(); });
+
+  document.getElementById("savebtn").onclick = () => {
+    if (!activeKey) return;
+    const pnlRaw = document.getElementById("f-pnl").value;
+    const tradesRaw = document.getElementById("f-trades").value;
+    const note = document.getElementById("f-note").value.trim();
+    const pnl = pnlRaw === "" ? null : parseFloat(pnlRaw);
+    const trades = tradesRaw === "" ? 0 : parseInt(tradesRaw, 10);
+    if (pnl === null && !note) { delete entries[activeKey]; }
+    else { entries[activeKey] = { pnl, trades: trades || 0, note }; }
+    persistEntries();
+    renderAll();
+    closeModal();
+  };
+  document.getElementById("clearbtn").onclick = () => {
+    if (!activeKey) return;
+    delete entries[activeKey];
+    persistEntries();
+    renderAll();
+    closeModal();
+  };
+
+  document.getElementById("prevmonth").onclick = () => { cursor.setMonth(cursor.getMonth()-1); renderAll(); };
+  document.getElementById("nextmonth").onclick = () => { cursor.setMonth(cursor.getMonth()+1); renderAll(); };
+
+  // iOS install hint (only if not already installed, only on iOS Safari)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  if (isIOS && !isStandalone) document.getElementById("installtip").classList.add("show");
+
+  // register service worker for offline support
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    });
+  }
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

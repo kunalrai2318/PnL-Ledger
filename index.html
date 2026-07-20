@@ -298,12 +298,6 @@
     appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
   };
 
-  if (FIREBASE_CONFIG.apiKey === "PASTE_ME") {
-    document.getElementById("configwarnscreen").style.display = "flex";
-    document.getElementById("authloading").style.display = "none";
-    return;
-  }
-
   firebase.initializeApp(FIREBASE_CONFIG);
   const auth = firebase.auth();
   const db = firebase.firestore();

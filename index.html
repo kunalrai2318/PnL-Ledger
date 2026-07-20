@@ -5,182 +5,240 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>P&L Ledger</title>
 
-<!-- PWA / iOS install metadata -->
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#0F1A24" />
+<meta name="theme-color" content="#000000" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="P&L Ledger" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="icon" href="icon-192.png" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- Firebase (free tier) — provides the account login + private cloud sync -->
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
 
 <style>
   :root {
-    --bg: #0F1A24;
-    --bg-strip: #0B1420;
-    --surface: #16232F;
-    --cell: #16232F;
-    --cell-hover: #1B2B38;
-    --line: #233241;
-    --line-soft: #1D2A36;
-    --text: #EDEEE9;
-    --muted: #8A97A3;
-    --faint: #5A6875;
-    --green: #3FB68B;
-    --green-bg: #12291F;
-    --green-bg-hover: #163526;
-    --red: #E2604F;
-    --red-bg: #2A1717;
-    --red-bg-hover: #331B1B;
-    --gold: #C9A227;
-    --serif: 'Fraunces', Georgia, serif;
-    --mono: 'IBM Plex Mono', ui-monospace, monospace;
-    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --bg: #000000;
+    --card: #1C1C1E;
+    --cell: #17171A;
+    --separator: rgba(255,255,255,0.09);
+    --text: #F5F5F7;
+    --text-secondary: rgba(235,235,245,0.60);
+    --text-tertiary: rgba(235,235,245,0.34);
+    --green: #32D74B;
+    --green-dim: rgba(50,215,75,0.14);
+    --red: #FF453A;
+    --red-dim: rgba(255,69,58,0.14);
+    --amber: #FF9F0A;
+    --blue: #0A84FF;
+    --radius-lg: 20px;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font); -webkit-font-smoothing: antialiased;
+  }
   body { min-height: 100vh; min-height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
-  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; -webkit-user-select: none; user-select: none; }
+  button:active { opacity: 0.55; }
   input, textarea { font: inherit; color: inherit; }
 
-  .app { display: flex; min-height: 100vh; min-height: 100dvh; }
-  .binding {
-    width: 28px; flex-shrink: 0; background: var(--bg-strip); border-right: 1px solid var(--line);
-    display: flex; flex-direction: column; align-items: center; padding: 24px 0;
-  }
-  .binding .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); margin: 11px 0; }
-  @media (max-width: 640px) { .binding { display: none; } }
+  .main { max-width: 720px; margin: 0 auto; padding: 8px 16px 48px; width: 100%; }
+  @media (min-width: 860px) { .main { max-width: 980px; padding: 24px 32px 60px; } }
 
-  .main { flex: 1; max-width: 1100px; margin: 0 auto; padding: 28px 18px 60px; width: 100%; }
-  @media (min-width: 640px) { .main { padding: 32px 32px 60px; } }
+  .header { padding: 14px 4px 20px; }
+  .kicker-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .kicker { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 13px; font-weight: 590; letter-spacing: 0.02em; text-transform: uppercase; }
+  .synctag { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
+  .synctag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .synctag.offline .dot { background: var(--amber); }
+  .signout { font-size: 12px; color: var(--blue); font-weight: 600; }
+  .titlerow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 34px; font-weight: 750; letter-spacing: -0.4px; margin: 0; }
+  .alltime-wrap { text-align: right; }
+  .alltime-label { font-size: 12px; color: var(--text-tertiary); font-weight: 590; }
+  .alltime-val { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 1px; }
 
-  .header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
-  .eyebrow { display: flex; align-items: center; gap: 6px; color: var(--gold); font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 4px; }
-  h1 { font-family: var(--serif); font-weight: 600; font-size: 32px; margin: 0; }
-  .alltime { margin-top: 8px; font-size: 13px; color: var(--muted); font-family: var(--mono); }
-  .savestate { margin-left: 10px; color: var(--faint); }
-
-  .monthnav { display: flex; align-items: center; gap: 10px; }
-  .navbtn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
-  .navbtn:active { background: var(--surface); }
-  .monthlabel { font-family: var(--serif); font-size: 18px; width: 170px; text-align: center; }
-
-  .layout { display: grid; grid-template-columns: 1fr; gap: 28px; }
-  @media (min-width: 980px) { .layout { grid-template-columns: 1fr 300px; } }
-
-  .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8px; }
-  .dow div { text-align: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); padding-bottom: 6px; }
-
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .cell { min-height: 88px; background: var(--cell); text-align: left; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
-  .cell.empty { background: var(--bg); }
-  .cell.hasdata:not(.empty) { cursor: pointer; }
-  .cell:not(.empty):active { filter: brightness(1.1); }
-  .cell.win { background: var(--green-bg); }
-  .cell.loss { background: var(--red-bg); }
-  .cell.blank:not(.empty) { background: var(--cell); }
-  .daynum { font-family: var(--mono); font-size: 11px; color: var(--faint); }
-  .daynum.today { color: var(--gold); font-weight: 600; }
-  .pnlfig { font-family: var(--mono); font-size: 13px; line-height: 1.2; }
-  .pnlfig.pos { color: var(--green); }
-  .pnlfig.neg { color: var(--red); }
-  .tradecount { font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-top: 1px; }
-  .notedot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
-
-  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
-  .panel + .panel { margin-top: 20px; }
-  .paneltitle { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px; }
-  .statrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
-  .statrow:last-child { border-bottom: none; }
-  .statrow .label { color: var(--muted); }
-  .statrow .value { font-family: var(--mono); }
-
-  .goalbar { height: 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
-  .goalbar > div { height: 100%; background: var(--gold); transition: width .3s ease; }
-  .goalnums { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 6px; }
-  .goalset { font-family: var(--mono); font-size: 12px; color: var(--gold); }
-  .goalinput-row { display: flex; gap: 8px; }
-  .goalinput { flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-family: var(--mono); }
-  .goalinput:focus { outline: none; border-color: var(--gold); }
-  .goalsave { background: var(--gold); color: var(--bg); font-weight: 600; border-radius: 6px; padding: 7px 12px; font-size: 12px; }
-
-  .ddmeta { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .ddempty { font-size: 12px; color: var(--faint); }
-
-  /* modal */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
-  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; width: 100%; max-width: 380px; padding: 20px; }
-  .modalhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .modaldate { font-family: var(--mono); font-size: 13px; color: var(--muted); }
-  .closebtn { color: var(--faint); font-size: 20px; line-height: 1; }
-  .flabel { display: block; font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
-  .finput { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 17px; }
-  .finput:focus { outline: none; border-color: var(--gold); }
-  #f-trades { font-size: 15px; }
-  textarea.finput { font-family: var(--sans); font-size: 14px; resize: none; }
-  .modalbtns { display: flex; gap: 8px; }
-  .btn-save { flex: 1; background: var(--gold); color: var(--bg); font-weight: 600; border-radius: 7px; padding: 11px; font-size: 14px; }
-  .btn-clear { padding: 11px 16px; border: 1px solid var(--line); border-radius: 7px; font-size: 14px; color: var(--muted); }
+  .monthnav { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 18px 0 14px; background: var(--card); border-radius: 12px; padding: 4px; }
+  .navbtn { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  .navbtn:active { background: rgba(255,255,255,0.08); opacity: 1; }
+  .monthlabel { flex: 1; text-align: center; font-size: 16px; font-weight: 650; }
 
   .installtip { display: none; }
-  .installtip.show { display: block; background: var(--surface); border: 1px solid var(--gold); border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; font-size: 13px; color: var(--muted); }
+  .installtip.show { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
   .installtip b { color: var(--text); }
+  .installtip .icon { font-size: 20px; flex-shrink: 0; }
+
+  .cal-card { background: var(--card); border-radius: var(--radius-lg); padding: 14px 10px 16px; margin-bottom: 20px; }
+  .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+  .dow div { text-align: center; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-tertiary); padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cell { aspect-ratio: 1 / 1; min-height: 62px; background: var(--cell); border-radius: 11px; text-align: left; padding: 6px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  .cell.empty { background: transparent; }
+  .cell:not(.empty):active { transform: scale(0.94); opacity: 1; }
+  .cell.win { background: var(--green-dim); }
+  .cell.loss { background: var(--red-dim); }
+  .daynum { font-size: 11px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .daynum.today { color: var(--blue); }
+  .todaydot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--blue); margin-left: 3px; vertical-align: middle; }
+  .pnlfig { font-size: 12px; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .pnlfig.pos { color: var(--green); }
+  .pnlfig.neg { color: var(--red); }
+  .tradecount { font-size: 9px; color: var(--text-tertiary); margin-top: 1px; font-weight: 500; }
+  .cellphoto { position: absolute; inset: 0; object-fit: cover; opacity: 0.28; }
+  .notedot { position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+
+  .panel { background: var(--card); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
+  .paneltitle { font-size: 13px; font-weight: 650; color: var(--text-tertiary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .statrow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--separator); font-size: 15px; }
+  .statrow:last-child { border-bottom: none; padding-bottom: 2px; }
+  .statrow:first-child { padding-top: 2px; }
+  .statrow .label { color: var(--text-secondary); }
+  .statrow .value { font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  .goalbar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+  .goalnums { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .goalset { font-size: 14px; color: var(--blue); font-weight: 600; }
+  .goalinput-row { display: flex; gap: 8px; }
+  .goalinput { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; font-variant-numeric: tabular-nums; }
+  .goalinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 16px; font-size: 14px; }
+
+  .ddmeta { font-size: 13px; color: var(--text-secondary); margin-top: 8px; font-weight: 500; }
+  .ddempty { font-size: 13px; color: var(--text-tertiary); line-height: 1.5; }
+
+  @media (min-width: 860px) { .layout2 { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; } }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; z-index: 50; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+  @media (min-width: 640px) { .overlay { align-items: center; } }
+  .sheet { background: #1C1C1E; width: 100%; max-width: 460px; border-radius: 20px 20px 0 0; padding: 10px 20px calc(24px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .3s cubic-bezier(.32,.72,0,1); max-height: 88vh; overflow-y: auto; }
+  .overlay.open .sheet { transform: translateY(0); }
+  @media (min-width: 640px) { .sheet { border-radius: 20px; padding: 20px 22px 22px; transform: translateY(12px) scale(0.97); } .overlay.open .sheet { transform: translateY(0) scale(1); } }
+  .grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.22); margin: 4px auto 14px; }
+  @media (min-width: 640px) { .grabber { display: none; } }
+  .modalhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .modaldate { font-size: 17px; font-weight: 700; }
+  .closebtn { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--text-secondary); }
+  .flabel { display: block; font-size: 12px; font-weight: 650; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 6px; }
+  .finput { width: 100%; background: rgba(255,255,255,0.06); border: none; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .finput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  #f-trades { font-size: 15px; }
+  textarea.finput { font-size: 15px; resize: none; font-variant-numeric: normal; }
+  .photo-row { margin-bottom: 16px; }
+  .photo-area { display: flex; align-items: center; gap: 10px; }
+  .photo-btn { width: 74px; height: 74px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.22); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--text-secondary); font-size: 10.5px; font-weight: 600; flex-shrink: 0; }
+  .photo-btn .plus { font-size: 20px; line-height: 1; color: var(--blue); }
+  .photo-preview-wrap { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
+  .photo-preview { width: 74px; height: 74px; border-radius: 14px; object-fit: cover; display: block; }
+  .photo-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #2C2C2E; border: 2px solid #1C1C1E; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .photo-hint { font-size: 12px; color: var(--text-tertiary); }
+  .modalbtns { display: flex; gap: 10px; margin-top: 4px; }
+  .btn-save { flex: 1; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; }
+  .btn-clear { padding: 14px 18px; background: rgba(255,69,58,0.12); border-radius: 13px; font-size: 15px; font-weight: 600; color: var(--red); }
+
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 14px; }
+  .lightbox-close { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+  /* ---- Auth screen ---- */
+  #authscreen { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  #authscreen.hidden { display: none; }
+  .authcard { width: 100%; max-width: 360px; }
+  .authlogo { font-size: 40px; text-align: center; margin-bottom: 6px; }
+  .authtitle { font-size: 26px; font-weight: 750; text-align: center; margin-bottom: 4px; letter-spacing: -0.3px; }
+  .authsub { font-size: 14px; color: var(--text-secondary); text-align: center; margin-bottom: 28px; line-height: 1.4; }
+  .authinput { width: 100%; background: var(--card); border: none; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; font-size: 16px; }
+  .authinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .authbtn { width: 100%; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; margin-top: 8px; }
+  .authbtn:disabled { opacity: 0.5; }
+  .authtoggle { text-align: center; margin-top: 18px; font-size: 14px; color: var(--text-secondary); }
+  .authtoggle button { color: var(--blue); font-weight: 600; }
+  .autherror { color: var(--red); font-size: 13px; text-align: center; margin-top: 10px; min-height: 16px; }
+  .authloading { display: flex; align-items: center; justify-content: center; height: 100vh; color: var(--text-tertiary); font-size: 14px; }
+  .configwarn { background: var(--card); border: 1px solid var(--amber); border-radius: 14px; padding: 16px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); max-width: 420px; }
+  .configwarn b { color: var(--amber); }
+  .configwarn code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 </style>
 </head>
 <body>
-  <div class="app">
-    <div class="binding" id="binding"></div>
-    <div class="main">
 
-      <div class="installtip" id="installtip">
-        📲 <b>Install this app:</b> tap the Share icon in Safari, then "Add to Home Screen."
-      </div>
-
-      <div class="header">
-        <div>
-          <div class="eyebrow">📓 Ledger</div>
-          <h1>P&amp;L Ledger</h1>
-          <div class="alltime">All-time <span id="alltime-val"></span><span class="savestate" id="savestate"></span></div>
-        </div>
-        <div class="monthnav">
-          <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
-          <div class="monthlabel" id="monthlabel"></div>
-          <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
-        </div>
-      </div>
-
-      <div class="layout">
-        <div>
-          <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
-          <div class="grid" id="grid"></div>
-        </div>
-
-        <div>
-          <div class="panel">
-            <div class="paneltitle">This month</div>
-            <div id="stats"></div>
-          </div>
-
-          <div class="panel">
-            <div class="paneltitle">🎯 Monthly goal</div>
-            <div id="goalpanel"></div>
-          </div>
-
-          <div class="panel">
-            <div class="paneltitle">📉 Drawdown</div>
-            <div id="drawdown"></div>
-          </div>
-        </div>
-      </div>
-
+  <!-- Shown only if FIREBASE_CONFIG below hasn't been filled in yet -->
+  <div id="configwarnscreen" style="display:none; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+    <div class="configwarn">
+      <b>Setup needed:</b> open <code>index.html</code> and paste your Firebase project config into the <code>FIREBASE_CONFIG</code> object near the top of the script, then re-upload. See the README for the full walkthrough.
     </div>
   </div>
 
-  <div class="overlay" id="overlay" style="display:none">
-    <div class="modal">
+  <div id="authloading" class="authloading">Loading…</div>
+
+  <div id="authscreen" class="hidden">
+    <div class="authcard">
+      <div class="authlogo">📓</div>
+      <div class="authtitle">P&amp;L Ledger</div>
+      <div class="authsub" id="authsub">Log in to sync your trading journal across every device.</div>
+      <input class="authinput" id="auth-email" type="email" placeholder="Email" autocomplete="email" />
+      <input class="authinput" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button class="authbtn" id="auth-submit">Log In</button>
+      <div class="autherror" id="auth-error"></div>
+      <div class="authtoggle" id="authtoggle">New here? <button id="authtoggle-btn">Create an account</button></div>
+    </div>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="main">
+      <div class="header">
+        <div class="kicker-row">
+          <div class="kicker">Trading Journal</div>
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div class="synctag" id="synctag"><span class="dot"></span><span id="synctext">Synced</span></div>
+            <button class="signout" id="signoutbtn">Sign out</button>
+          </div>
+        </div>
+        <div class="titlerow">
+          <h1>P&amp;L Ledger</h1>
+          <div class="alltime-wrap">
+            <div class="alltime-label">All-time</div>
+            <div class="alltime-val" id="alltime-val">$0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="installtip" id="installtip">
+        <span class="icon">📲</span>
+        <span><b>Install this app:</b> tap the Share icon in Safari, then "Add to Home Screen."</span>
+      </div>
+
+      <div class="monthnav">
+        <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
+        <div class="monthlabel" id="monthlabel"></div>
+        <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
+      </div>
+
+      <div class="layout2">
+        <div>
+          <div class="cal-card">
+            <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+            <div class="grid" id="grid"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel"><div class="paneltitle">This Month</div><div id="stats"></div></div>
+          <div class="panel"><div class="paneltitle">Monthly Goal</div><div id="goalpanel"></div></div>
+          <div class="panel"><div class="paneltitle">Drawdown</div><div id="drawdown"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="sheet">
+      <div class="grabber"></div>
       <div class="modalhead">
         <div class="modaldate" id="modaldate"></div>
         <button class="closebtn" id="closemodal">✕</button>
@@ -189,8 +247,16 @@
       <input class="finput" id="f-pnl" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
       <label class="flabel">Trades</label>
       <input class="finput" id="f-trades" type="number" min="0" placeholder="0" inputmode="numeric" />
-      <label class="flabel">Journal note</label>
+      <label class="flabel">Journal Note</label>
       <textarea class="finput" id="f-note" rows="3" placeholder="Risk, outcome, emotion…"></textarea>
+      <div class="photo-row">
+        <label class="flabel">Chart Screenshot</label>
+        <div class="photo-area" id="photoArea">
+          <button class="photo-btn" id="photoAddBtn" type="button"><span class="plus">＋</span><span>Add photo</span></button>
+          <span class="photo-hint">Attach a chart or trade screenshot</span>
+        </div>
+        <input type="file" accept="image/*" id="photoInput" style="display:none" />
+      </div>
       <div class="modalbtns">
         <button class="btn-save" id="savebtn">Save</button>
         <button class="btn-clear" id="clearbtn">Clear</button>
@@ -198,17 +264,47 @@
     </div>
   </div>
 
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">✕</button>
+    <img id="lightboxImg" src="" alt="Trade screenshot" />
+  </div>
+
 <script>
 (function() {
-  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const STORE_ENTRIES = "pnlledger.entries";
-  const STORE_GOALS = "pnlledger.goals";
+  // =========================================================================
+  // 1) PASTE YOUR FIREBASE PROJECT CONFIG HERE (from Firebase Console →
+  //    Project settings → General → Your apps → SDK setup and configuration)
+  // =========================================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC4nWqW4seNiGQc-pEkExhT4dJJIU3Pda4",
+    authDomain: "pnl-journal-6dcce.firebaseapp.com",
+    projectId: "pnl-journal-6dcce",
+    storageBucket: "pnl-journal-6dcce.firebasestorage.app",
+    messagingSenderId: "718618497202",
+    appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
+  };
 
-  let entries = JSON.parse(localStorage.getItem(STORE_ENTRIES) || "{}");
-  let goals = JSON.parse(localStorage.getItem(STORE_GOALS) || "{}");
+  if (FIREBASE_CONFIG.apiKey === "PASTE_ME") {
+    document.getElementById("configwarnscreen").style.display = "flex";
+    document.getElementById("authloading").style.display = "none";
+    return;
+  }
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  let entries = {};
+  let goals = {};
   let cursor = new Date();
   cursor.setDate(1);
   let activeKey = null;
+  let activePhoto = null;
+  let uid = null;
+  let unsubEntries = null, unsubGoals = null;
 
   const pad2 = n => String(n).padStart(2, "0");
   const dayKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
@@ -222,22 +318,100 @@
     return `${sign}$${abs}`;
   }
 
-  function persistEntries() {
-    document.getElementById("savestate").textContent = " saving…";
-    localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
-    setTimeout(() => { document.getElementById("savestate").textContent = " saved"; }, 150);
-    setTimeout(() => { document.getElementById("savestate").textContent = ""; }, 1000);
+  // ---------- Auth ----------
+  let isSignUp = false;
+  document.getElementById("authtoggle-btn").onclick = () => {
+    isSignUp = !isSignUp;
+    document.getElementById("auth-submit").textContent = isSignUp ? "Create Account" : "Log In";
+    document.getElementById("authsub").textContent = isSignUp
+      ? "Create an account, then log in with it on your other devices."
+      : "Log in to sync your trading journal across every device.";
+    document.getElementById("authtoggle").innerHTML = isSignUp
+      ? `Already have an account? <button id="authtoggle-btn2">Log in</button>`
+      : `New here? <button id="authtoggle-btn2">Create an account</button>`;
+    document.getElementById("authtoggle-btn2").onclick = document.getElementById("authtoggle-btn").onclick;
+    document.getElementById("auth-error").textContent = "";
+  };
+
+  document.getElementById("auth-submit").onclick = async () => {
+    const email = document.getElementById("auth-email").value.trim();
+    const password = document.getElementById("auth-password").value;
+    const errEl = document.getElementById("auth-error");
+    errEl.textContent = "";
+    if (!email || !password) { errEl.textContent = "Enter an email and password."; return; }
+    if (password.length < 6) { errEl.textContent = "Password must be at least 6 characters."; return; }
+    const btn = document.getElementById("auth-submit");
+    btn.disabled = true;
+    try {
+      if (isSignUp) await auth.createUserWithEmailAndPassword(email, password);
+      else await auth.signInWithEmailAndPassword(email, password);
+    } catch (e) {
+      errEl.textContent = e.message.replace(/^Firebase:\s*/, "");
+    }
+    btn.disabled = false;
+  };
+
+  document.getElementById("signoutbtn").onclick = () => auth.signOut();
+
+  auth.onAuthStateChanged((user) => {
+    document.getElementById("authloading").style.display = "none";
+    if (user) {
+      uid = user.uid;
+      document.getElementById("authscreen").classList.add("hidden");
+      document.getElementById("app").style.display = "block";
+      attachListeners();
+    } else {
+      uid = null;
+      if (unsubEntries) unsubEntries();
+      if (unsubGoals) unsubGoals();
+      document.getElementById("app").style.display = "none";
+      document.getElementById("authscreen").classList.remove("hidden");
+    }
+  });
+
+  // ---------- Firestore sync ----------
+  function setSyncStatus(state) {
+    const tag = document.getElementById("synctag");
+    const text = document.getElementById("synctext");
+    if (state === "synced") { tag.classList.remove("offline"); text.textContent = "Synced"; }
+    else if (state === "syncing") { tag.classList.remove("offline"); text.textContent = "Syncing…"; }
+    else { tag.classList.add("offline"); text.textContent = "Offline — will sync"; }
   }
-  function persistGoals() { localStorage.setItem(STORE_GOALS, JSON.stringify(goals)); }
 
-  // binding strip dots
-  const binding = document.getElementById("binding");
-  for (let i = 0; i < 22; i++) { const d = document.createElement("div"); d.className = "dot"; binding.appendChild(d); }
+  function attachListeners() {
+    const entriesCol = db.collection("users").doc(uid).collection("entries");
+    const goalsCol = db.collection("users").doc(uid).collection("goals");
 
+    unsubEntries = entriesCol.onSnapshot((snap) => {
+      entries = {};
+      snap.forEach((doc) => { entries[doc.id] = doc.data(); });
+      renderAll();
+      setSyncStatus(snap.metadata.fromCache ? "offline" : "synced");
+    }, () => setSyncStatus("offline"));
+
+    unsubGoals = goalsCol.onSnapshot((snap) => {
+      goals = {};
+      snap.forEach((doc) => { goals[doc.id] = doc.data().target; });
+      renderStats();
+    }, () => {});
+  }
+
+  function saveEntryToCloud(key, data) {
+    setSyncStatus("syncing");
+    const entriesCol = db.collection("users").doc(uid).collection("entries");
+    if (data === null) entriesCol.doc(key).delete().catch(() => {});
+    else entriesCol.doc(key).set(data).catch(() => {});
+  }
+  function saveGoalToCloud(key, target) {
+    const goalsCol = db.collection("users").doc(uid).collection("goals");
+    if (target === null) goalsCol.doc(key).delete().catch(() => {});
+    else goalsCol.doc(key).set({ target }).catch(() => {});
+  }
+
+  // ---------- Stats ----------
   function computeStats() {
     const mKey = monthKey(cursor);
-    const monthEntries = Object.keys(entries).filter(k => k.startsWith(mKey)).sort()
-      .map(k => ({ date: k, ...entries[k] }));
+    const monthEntries = Object.keys(entries).filter(k => k.startsWith(mKey)).sort().map(k => ({ date: k, ...entries[k] }));
     const trading = monthEntries.filter(e => e.pnl !== null && e.pnl !== undefined);
     const wins = trading.filter(e => e.pnl > 0);
     const losses = trading.filter(e => e.pnl < 0);
@@ -251,14 +425,9 @@
     const expectancy = trading.length ? (winRate/100)*avgWin - (1-winRate/100)*avgLoss : null;
     const avgPnl = trading.length ? totalPnl/trading.length : null;
     const totalTrades = trading.reduce((s,e)=>s+(e.trades||0),0);
-
     let running = 0, peak = 0;
-    const dd = trading.map(e => {
-      running += e.pnl; peak = Math.max(peak, running);
-      return { date: e.date.slice(8), cumulative: running, drawdown: running - peak };
-    });
+    const dd = trading.map(e => { running += e.pnl; peak = Math.max(peak, running); return { date: e.date.slice(8), drawdown: running - peak }; });
     const maxDrawdown = dd.length ? Math.min(...dd.map(x=>x.drawdown)) : 0;
-
     return { totalPnl, winRate, profitFactor, expectancy, avgPnl, totalTrades, dd, maxDrawdown };
   }
 
@@ -275,8 +444,6 @@
       <div class="statrow"><span class="label">Avg P&amp;L / day</span><span class="value" style="color:${avgColor}">${s.avgPnl===null?"—":fmtMoney(s.avgPnl)}</span></div>
       <div class="statrow"><span class="label">Trades logged</span><span class="value">${s.totalTrades}</span></div>
     `;
-
-    // goal panel
     const mKey = monthKey(cursor);
     const target = goals[mKey];
     const gp = document.getElementById("goalpanel");
@@ -285,59 +452,45 @@
       gp.innerHTML = `
         <div class="goalnums"><span>${fmtMoney(s.totalPnl,false)}</span><span>${fmtMoney(target,false)}</span></div>
         <div class="goalbar"><div style="width:${pct}%"></div></div>
-        <button class="goalset" id="editgoal" style="margin-top:8px">edit target</button>
-      `;
+        <button class="goalset" id="editgoal" style="margin-top:12px">Edit target</button>`;
       document.getElementById("editgoal").onclick = () => showGoalInput(target);
     } else {
-      gp.innerHTML = `<button class="goalset" id="setgoal">+ set a target for ${MONTHS[cursor.getMonth()]}</button>`;
+      gp.innerHTML = `<button class="goalset" id="setgoal">+ Set a target for ${MONTHS[cursor.getMonth()]}</button>`;
       document.getElementById("setgoal").onclick = () => showGoalInput("");
     }
-
-    // drawdown
     const dd = document.getElementById("drawdown");
-    if (s.dd.length > 1) {
-      dd.innerHTML = renderDrawdownSvg(s.dd) + `<div class="ddmeta">Max drawdown: <span style="color:var(--red)">${fmtMoney(s.maxDrawdown)}</span></div>`;
-    } else {
-      dd.innerHTML = `<div class="ddempty">Log a few days to see your drawdown curve.</div>`;
-    }
+    if (s.dd.length > 1) dd.innerHTML = renderDrawdownSvg(s.dd) + `<div class="ddmeta">Max drawdown: <span style="color:var(--red)">${fmtMoney(s.maxDrawdown)}</span></div>`;
+    else dd.innerHTML = `<div class="ddempty">Log a few days to see your drawdown curve.</div>`;
   }
 
   function showGoalInput(current) {
     const gp = document.getElementById("goalpanel");
-    gp.innerHTML = `
-      <div class="goalinput-row">
-        <input class="goalinput" id="goalinput" type="number" placeholder="Target $" value="${current}" inputmode="decimal" />
-        <button class="goalsave" id="goalsavebtn">Set</button>
-      </div>
-    `;
+    gp.innerHTML = `<div class="goalinput-row"><input class="goalinput" id="goalinput" type="number" placeholder="Target $" value="${current}" inputmode="decimal" /><button class="goalsave" id="goalsavebtn">Set</button></div>`;
     const input = document.getElementById("goalinput");
     input.focus();
     const save = () => {
       const val = parseFloat(input.value);
       const mKey = monthKey(cursor);
-      if (!isNaN(val) && val > 0) goals[mKey] = val; else delete goals[mKey];
-      persistGoals();
-      renderStats();
+      saveGoalToCloud(mKey, (!isNaN(val) && val > 0) ? val : null);
     };
     document.getElementById("goalsavebtn").onclick = save;
     input.addEventListener("keydown", e => { if (e.key === "Enter") save(); });
   }
 
   function renderDrawdownSvg(dd) {
-    const w = 260, h = 120, pad = 6;
+    const w = 280, h = 110, pad = 6;
     const vals = dd.map(d => d.drawdown);
     const min = Math.min(...vals, 0), max = Math.max(...vals, 0);
     const range = (max - min) || 1;
     const stepX = (w - pad*2) / (dd.length - 1);
     const zeroY = pad + (max - 0) / range * (h - pad*2);
-    const pts = dd.map((d,i) => {
-      const x = pad + i*stepX;
-      const y = pad + (max - d.drawdown) / range * (h - pad*2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-    return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:120px" preserveAspectRatio="none">
-      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${w}" y2="${zeroY.toFixed(1)}" stroke="#233241" stroke-width="1" />
-      <polyline points="${pts}" fill="none" stroke="#E2604F" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" />
+    const pts = dd.map((d,i) => { const x = pad + i*stepX; const y = pad + (max - d.drawdown) / range * (h - pad*2); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(" ");
+    const last = pts.split(" ").pop().split(",");
+    return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:110px" preserveAspectRatio="none">
+      <defs><linearGradient id="ddgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF453A" stop-opacity="0.25"/><stop offset="100%" stop-color="#FF453A" stop-opacity="0"/></linearGradient></defs>
+      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${w}" y2="${zeroY.toFixed(1)}" stroke="rgba(255,255,255,0.12)" stroke-width="1" />
+      <polygon points="${pad},${zeroY.toFixed(1)} ${pts} ${last[0]},${zeroY.toFixed(1)}" fill="url(#ddgrad)" />
+      <polyline points="${pts}" fill="none" stroke="#FF453A" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
     </svg>`;
   }
 
@@ -351,7 +504,6 @@
     for (let i=0;i<startOffset;i++) cells.push(null);
     for (let d=1; d<=daysInMonth; d++) cells.push(new Date(year, month, d));
     while (cells.length % 7 !== 0) cells.push(null);
-
     const todayKey = dayKey(new Date());
     const grid = document.getElementById("grid");
     grid.innerHTML = "";
@@ -361,15 +513,13 @@
       const key = dayKey(d);
       const entry = entries[key];
       const hasPnl = entry && entry.pnl !== null && entry.pnl !== undefined;
-      cell.className = "cell " + (hasPnl ? (entry.pnl >= 0 ? "win" : "loss") : "blank");
+      cell.className = "cell " + (hasPnl ? (entry.pnl >= 0 ? "win" : "loss") : "");
       cell.type = "button";
       const isToday = key === todayKey;
-      let html = `<span class="daynum ${isToday?'today':''}">${pad2(d.getDate())}</span>`;
-      if (hasPnl) {
-        html += `<div><div class="pnlfig ${entry.pnl>=0?'pos':'neg'}">${fmtMoney(entry.pnl)}</div><div class="tradecount">${entry.trades||0} trade${entry.trades===1?"":"s"}</div></div>`;
-      } else {
-        html += `<div></div>`;
-      }
+      let html = "";
+      if (entry && entry.photo) html += `<img class="cellphoto" src="${entry.photo}" alt="" />`;
+      html += `<span class="daynum ${isToday?'today':''}">${pad2(d.getDate())}${isToday?'<span class="todaydot"></span>':''}</span>`;
+      html += hasPnl ? `<div><div class="pnlfig ${entry.pnl>=0?'pos':'neg'}">${fmtMoney(entry.pnl)}</div><div class="tradecount">${entry.trades||0} trade${entry.trades===1?"":"s"}</div></div>` : `<div></div>`;
       if (entry && entry.note) html += `<span class="notedot"></span>`;
       cell.innerHTML = html;
       cell.onclick = () => openDay(d, key);
@@ -386,17 +536,58 @@
 
   function renderAll() { renderGrid(); renderStats(); renderAllTime(); }
 
+  function renderPhotoArea() {
+    const area = document.getElementById("photoArea");
+    if (activePhoto) {
+      area.innerHTML = `<div class="photo-preview-wrap"><img class="photo-preview" src="${activePhoto}" id="photoPreviewImg" /><button class="photo-remove" id="photoRemoveBtn" type="button">✕</button></div><span class="photo-hint">Tap to view · tap ✕ to remove</span>`;
+      document.getElementById("photoPreviewImg").onclick = () => openLightbox(activePhoto);
+      document.getElementById("photoRemoveBtn").onclick = (e) => { e.stopPropagation(); activePhoto = null; renderPhotoArea(); };
+    } else {
+      area.innerHTML = `<button class="photo-btn" id="photoAddBtn" type="button"><span class="plus">＋</span><span>Add photo</span></button><span class="photo-hint">Attach a chart or trade screenshot</span>`;
+      document.getElementById("photoAddBtn").onclick = () => document.getElementById("photoInput").click();
+    }
+  }
+
+  document.getElementById("photoInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 900;
+        let { width, height } = img;
+        if (width > height && width > maxDim) { height = height * (maxDim/width); width = maxDim; }
+        else if (height > maxDim) { width = width * (maxDim/height); height = maxDim; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        activePhoto = canvas.toDataURL("image/jpeg", 0.65);
+        renderPhotoArea();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  });
+
+  function openLightbox(src) { document.getElementById("lightboxImg").src = src; document.getElementById("lightbox").classList.add("open"); }
+  document.getElementById("lightboxClose").onclick = () => document.getElementById("lightbox").classList.remove("open");
+  document.getElementById("lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") e.currentTarget.classList.remove("open"); });
+
   function openDay(d, key) {
     activeKey = key;
     const entry = entries[key] || {};
+    activePhoto = entry.photo || null;
     document.getElementById("modaldate").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     document.getElementById("f-pnl").value = entry.pnl ?? "";
     document.getElementById("f-trades").value = entry.trades ?? "";
     document.getElementById("f-note").value = entry.note ?? "";
-    document.getElementById("overlay").style.display = "flex";
-    setTimeout(() => document.getElementById("f-pnl").focus(), 50);
+    renderPhotoArea();
+    document.getElementById("overlay").classList.add("open");
+    setTimeout(() => document.getElementById("f-pnl").focus(), 200);
   }
-  function closeModal() { document.getElementById("overlay").style.display = "none"; activeKey = null; }
+  function closeModal() { document.getElementById("overlay").classList.remove("open"); activeKey = null; activePhoto = null; }
 
   document.getElementById("closemodal").onclick = closeModal;
   document.getElementById("overlay").addEventListener("click", e => { if (e.target.id === "overlay") closeModal(); });
@@ -408,36 +599,25 @@
     const note = document.getElementById("f-note").value.trim();
     const pnl = pnlRaw === "" ? null : parseFloat(pnlRaw);
     const trades = tradesRaw === "" ? 0 : parseInt(tradesRaw, 10);
-    if (pnl === null && !note) { delete entries[activeKey]; }
-    else { entries[activeKey] = { pnl, trades: trades || 0, note }; }
-    persistEntries();
-    renderAll();
+    if (pnl === null && !note && !activePhoto) saveEntryToCloud(activeKey, null);
+    else saveEntryToCloud(activeKey, { pnl, trades: trades || 0, note, photo: activePhoto || null });
     closeModal();
   };
-  document.getElementById("clearbtn").onclick = () => {
-    if (!activeKey) return;
-    delete entries[activeKey];
-    persistEntries();
-    renderAll();
-    closeModal();
-  };
+  document.getElementById("clearbtn").onclick = () => { if (!activeKey) return; saveEntryToCloud(activeKey, null); closeModal(); };
 
   document.getElementById("prevmonth").onclick = () => { cursor.setMonth(cursor.getMonth()-1); renderAll(); };
   document.getElementById("nextmonth").onclick = () => { cursor.setMonth(cursor.getMonth()+1); renderAll(); };
 
-  // iOS install hint (only if not already installed, only on iOS Safari)
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
   if (isIOS && !isStandalone) document.getElementById("installtip").classList.add("show");
 
-  // register service worker for offline support
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js").catch(() => {});
-    });
+    window.addEventListener("load", () => { navigator.serviceWorker.register("service-worker.js").catch(() => {}); });
   }
 
-  renderAll();
+  window.addEventListener("online", () => setSyncStatus("synced"));
+  window.addEventListener("offline", () => setSyncStatus("offline"));
 })();
 </script>
 </body>

@@ -1,7 +1,5 @@
 const CACHE_NAME = "pnl-ledger-v4";
 const ASSETS = [
-  "./",
-  "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
@@ -24,18 +22,29 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const isHTML = event.request.mode === "navigate" || event.request.url.endsWith("index.html") || event.request.url.endsWith("/");
 
-  // Let Firebase Auth / Firestore / gstatic SDK traffic go straight to the
-  // network untouched — never cache it, never let it fall back to a stale
-  // cached response. This is what keeps login + sync reliable offline vs.
-  // online instead of serving old data.
-  if (!event.request.url.startsWith(self.location.origin)) return;
+  if (isHTML) {
+    // Network-first for the app shell so updates always show up immediately.
+    // Falls back to cache only if there's truly no connection.
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
+  // Cache-first for static assets (icons, manifest) — these rarely change.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const network = fetch(event.request)
         .then((res) => {
-          if (res && res.status === 200) {
+          if (res && res.status === 200 && event.request.url.startsWith(self.location.origin)) {
             const clone = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
@@ -46,4 +55,3 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
-

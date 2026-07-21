@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Trading Journal Calendar</title>
   <style>
-    /* RESET & BASE */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -22,7 +22,6 @@
       padding-bottom: 100px;
     }
 
-    /* HEADER */
     .header {
       padding: 12px 16px;
       background-color: #18181b;
@@ -50,7 +49,6 @@
       cursor: pointer;
     }
 
-    /* MONTH NAV */
     .month-nav {
       display: flex;
       justify-content: space-between;
@@ -76,7 +74,6 @@
       font-size: 1rem;
     }
 
-    /* CALENDAR GRID */
     .calendar-container {
       width: 100%;
       padding: 8px;
@@ -168,7 +165,6 @@
       text-transform: uppercase;
     }
 
-    /* PORTRAIT & LANDSCAPE FIXES */
     @media (max-width: 500px) {
       .day-cell {
         min-height: 68px;
@@ -191,7 +187,100 @@
       }
     }
 
-    /* MODAL - PREVENTS INVISIBLE BLOCKING */
+    /* ===== VIEWS (Calendar / Analytics / Settings) ===== */
+    .view {
+      display: none;
+    }
+    .view.active {
+      display: block;
+    }
+
+    .analytics-wrap, .settings-wrap {
+      padding: 16px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background-color: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .stat-value.positive { color: #4ade80; }
+    .stat-value.negative { color: #f87171; }
+
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin: 18px 0 10px 0;
+      color: #e1e1e6;
+    }
+
+    .trade-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .settings-row-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .settings-row-desc {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      margin-top: 2px;
+    }
+
+    .btn-danger {
+      background-color: #991b1b;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    /* MODAL */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -201,12 +290,12 @@
       justify-content: center;
       padding: 16px;
       z-index: 99999;
-      pointer-events: none; /* Disables click interception when closed */
+      pointer-events: none;
     }
 
     .modal-overlay.open {
       display: flex !important;
-      pointer-events: auto !important; /* Enables touch inside modal */
+      pointer-events: auto !important;
     }
 
     .modal-content {
@@ -303,7 +392,7 @@
       cursor: pointer;
     }
 
-    /* ENLARGED BOTTOM NAVIGATION BAR */
+    /* BOTTOM NAV */
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -349,16 +438,67 @@
     <button class="btn-add" onclick="openModal()">+ Add Trade</button>
   </div>
 
-  <!-- Month Navigation -->
-  <div class="month-nav">
-    <button onclick="changeMonth(-1)">&lt;</button>
-    <div class="month-title" id="monthDisplay">July 2026</div>
-    <button onclick="changeMonth(1)">&gt;</button>
+  <!-- ===== CALENDAR VIEW ===== -->
+  <div class="view active" id="view-Calendar">
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">&lt;</button>
+      <div class="month-title" id="monthDisplay">July 2026</div>
+      <button onclick="changeMonth(1)">&gt;</button>
+    </div>
+
+    <div class="calendar-container">
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
   </div>
 
-  <!-- Calendar Container -->
-  <div class="calendar-container">
-    <div class="calendar-grid" id="calendarGrid"></div>
+  <!-- ===== ANALYTICS VIEW ===== -->
+  <div class="view" id="view-Analytics">
+    <div class="analytics-wrap">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total P&amp;L</div>
+          <div class="stat-value" id="statTotalPnl">$0.00</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-value" id="statWinRate">0%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Trades</div>
+          <div class="stat-value" id="statTotalTrades">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg P&amp;L / Day</div>
+          <div class="stat-value" id="statAvgPnl">$0.00</div>
+        </div>
+      </div>
+
+      <div class="section-title">Recent Trades</div>
+      <div id="recentTradesList"></div>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS VIEW ===== -->
+  <div class="view" id="view-Settings">
+    <div class="settings-wrap">
+      <div class="section-title" style="margin-top:0;">Preferences</div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Default asset</div>
+          <div class="settings-row-desc">Used to pre-fill new trades</div>
+        </div>
+        <input type="text" class="form-input" style="width:90px; text-align:center;" id="defaultAssetInput" value="MNQ" />
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Clear all trades</div>
+          <div class="settings-row-desc">Removes every logged trade</div>
+        </div>
+        <button class="btn-danger" onclick="clearAllTrades()">Clear</button>
+      </div>
+    </div>
   </div>
 
   <!-- Trade Entry Modal -->
@@ -379,7 +519,7 @@
 
       <div class="form-group">
         <label for="tradeAmount">Amount ($)</label>
-        <input type="number" step="any" id="tradeAmount" class="form-input" placeholder="e.g. 300 or -300" oninput="handleAmountInput(this)" />
+        <input type="number" step="any" id="tradeAmount" class="form-input" placeholder="e.g. 300" />
       </div>
 
       <div class="form-group">
@@ -396,15 +536,15 @@
 
   <!-- Bottom Navigation -->
   <div class="bottom-nav">
-    <button class="nav-item active" onclick="switchTab('Calendar')">
+    <button class="nav-item active" id="tab-Calendar" onclick="switchTab('Calendar')">
       <span class="nav-icon">📅</span>
       <span>Calendar</span>
     </button>
-    <button class="nav-item" onclick="switchTab('Analytics')">
+    <button class="nav-item" id="tab-Analytics" onclick="switchTab('Analytics')">
       <span class="nav-icon">📊</span>
       <span>Analytics</span>
     </button>
-    <button class="nav-item" onclick="switchTab('Settings')">
+    <button class="nav-item" id="tab-Settings" onclick="switchTab('Settings')">
       <span class="nav-icon">⚙️</span>
       <span>Settings</span>
     </button>
@@ -419,9 +559,68 @@
       { date: '2026-07-21', amount: -300.00, asset: 'MNQ', count: 2 }
     ];
 
+    // ---------- TAB SWITCHING ----------
+    function switchTab(tabName) {
+      ['Calendar', 'Analytics', 'Settings'].forEach(function(name) {
+        document.getElementById('view-' + name).classList.remove('active');
+        document.getElementById('tab-' + name).classList.remove('active');
+      });
+      document.getElementById('view-' + tabName).classList.add('active');
+      document.getElementById('tab-' + tabName).classList.add('active');
+
+      if (tabName === 'Analytics') {
+        renderAnalytics();
+      }
+    }
+
+    function renderAnalytics() {
+      var total = 0;
+      var wins = 0;
+      trades.forEach(function(t) {
+        total += t.amount;
+        if (t.amount >= 0) wins++;
+      });
+      var winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
+      var avg = trades.length ? total / trades.length : 0;
+
+      var totalEl = document.getElementById('statTotalPnl');
+      totalEl.textContent = (total >= 0 ? '+' : '-') + '$' + Math.abs(total).toFixed(2);
+      totalEl.className = 'stat-value ' + (total >= 0 ? 'positive' : 'negative');
+
+      document.getElementById('statWinRate').textContent = winRate + '%';
+      document.getElementById('statTotalTrades').textContent = trades.length;
+
+      var avgEl = document.getElementById('statAvgPnl');
+      avgEl.textContent = (avg >= 0 ? '+' : '-') + '$' + Math.abs(avg).toFixed(2);
+      avgEl.className = 'stat-value ' + (avg >= 0 ? 'positive' : 'negative');
+
+      var list = document.getElementById('recentTradesList');
+      var sorted = trades.slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
+      list.innerHTML = sorted.map(function(t) {
+        var isLoss = t.amount < 0;
+        var formatted = (t.amount >= 0 ? '+' : '-') + '$' + Math.abs(t.amount).toFixed(2);
+        var color = isLoss ? '#f87171' : '#4ade80';
+        return '<div class="trade-list-item">' +
+                 '<span>' + t.date + ' &middot; ' + t.asset + '</span>' +
+                 '<span style="color:' + color + '; font-weight:700;">' + formatted + '</span>' +
+               '</div>';
+      }).join('') || '<div class="settings-row-desc">No trades logged yet.</div>';
+    }
+
+    function clearAllTrades() {
+      if (confirm('Remove all logged trades? This cannot be undone.')) {
+        trades = [];
+        renderCalendar();
+        renderAnalytics();
+      }
+    }
+
+    // ---------- MODAL ----------
     function openModal(dateStr) {
-      document.getElementById('tradeDate').value = dateStr || '2026-07-21';
+      document.getElementById('tradeDate').value = dateStr || toDateKey(currentDate.getFullYear(), currentDate.getMonth(), new Date().getDate());
       document.getElementById('tradeAmount').value = '';
+      var defaultAsset = document.getElementById('defaultAssetInput');
+      document.getElementById('tradeAsset').value = defaultAsset ? defaultAsset.value : 'MNQ';
       setTradeType('profit');
       document.getElementById('tradeModal').classList.add('open');
     }
@@ -430,42 +629,30 @@
       document.getElementById('tradeModal').classList.remove('open');
     }
 
-    function switchTab(tabName) {
-      alert("Switched to " + tabName + " view!");
+    function toDateKey(year, month, day) {
+      var monthStr = String(month + 1).padStart(2, '0');
+      var dayStr = String(day).padStart(2, '0');
+      return year + '-' + monthStr + '-' + dayStr;
     }
 
+    // ---------- PROFIT/LOSS TOGGLE ----------
+    // Fixed: the toggle buttons are now the single source of truth for sign.
+    // Typing an amount no longer silently flips the toggle back.
     function setTradeType(type) {
       selectedTradeType = type;
       var btnProfit = document.getElementById('btnProfit');
       var btnLoss = document.getElementById('btnLoss');
-      var amountInput = document.getElementById('tradeAmount');
 
       if (type === 'profit') {
         btnProfit.className = 'type-btn active-profit';
         btnLoss.className = 'type-btn';
-        if (amountInput.value < 0) {
-          amountInput.value = Math.abs(amountInput.value);
-        }
       } else {
         btnProfit.className = 'type-btn';
         btnLoss.className = 'type-btn active-loss';
-        if (amountInput.value > 0) {
-          amountInput.value = -Math.abs(amountInput.value);
-        }
       }
     }
 
-    function handleAmountInput(input) {
-      var val = parseFloat(input.value);
-      if (!isNaN(val)) {
-        if (val < 0 && selectedTradeType !== 'loss') {
-          setTradeType('loss');
-        } else if (val > 0 && selectedTradeType !== 'profit') {
-          setTradeType('profit');
-        }
-      }
-    }
-
+    // ---------- CALENDAR ----------
     function renderCalendar() {
       var year = currentDate.getFullYear();
       var month = currentDate.getMonth();
@@ -492,9 +679,7 @@
       }
 
       for (var day = 1; day <= totalDays; day++) {
-        var monthStr = String(month + 1).padStart(2, '0');
-        var dayStr = String(day).padStart(2, '0');
-        var dateKey = year + '-' + monthStr + '-' + dayStr;
+        var dateKey = toDateKey(year, month, day);
 
         var dayTrade = trades.find(function(t) { return t.date === dateKey; });
 
@@ -504,7 +689,7 @@
           var formattedAmount = (dayTrade.amount >= 0 ? '+' : '-') + '$' + Math.abs(dayTrade.amount).toFixed(2);
           var cardClass = isLoss ? 'loss' : 'profit';
 
-          tradeHTML = 
+          tradeHTML =
             '<div class="trade-card ' + cardClass + '">' +
               '<span class="pnl-amount">' + formattedAmount + '</span>' +
               '<div class="trade-meta">' +
@@ -514,7 +699,7 @@
             '</div>';
         }
 
-        grid.innerHTML += 
+        grid.innerHTML +=
           '<div class="day-cell" onclick="openModal(\'' + dateKey + '\')">' +
             '<span class="day-number">' + day + '</span>' +
             tradeHTML +
@@ -538,16 +723,17 @@
         return;
       }
 
-      if (selectedTradeType === 'loss' && amount > 0) {
+      // Sign is decided purely by which toggle button is active.
+      amount = Math.abs(amount);
+      if (selectedTradeType === 'loss') {
         amount = -amount;
-      } else if (selectedTradeType === 'profit' && amount < 0) {
-        amount = Math.abs(amount);
       }
 
       var existing = trades.find(function(t) { return t.date === date; });
       if (existing) {
         existing.amount = amount;
         existing.asset = asset;
+        existing.count = (existing.count || 1) + 1;
       } else {
         trades.push({ date: date, amount: amount, asset: asset, count: 1 });
       }
@@ -560,3 +746,4 @@
   </script>
 </body>
 </html>
+```

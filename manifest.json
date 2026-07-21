@@ -1,6 +1,6 @@
 {
-  "name": "P&L Ledger",
-  "short_name": "P&L Ledger",
+  "name": "KUN | P&L Ledger",
+  "short_name": "KUN",
   "description": "A calendar-based trading journal for tracking daily P&L, win rate, profit factor, expectancy, and drawdown.",
   "start_url": "./index.html",
   "scope": "./",

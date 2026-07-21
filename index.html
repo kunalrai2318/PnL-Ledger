@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-<title>P&L Ledger</title>
+<title>KUN | P&L Ledger</title>
 
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#000000" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="P&L Ledger" />
+<meta name="apple-mobile-web-app-title" content="KUN Ledger" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="icon" href="icon-192.png" />
 
@@ -46,23 +46,40 @@
   button:active { opacity: 0.55; }
   input, textarea { font: inherit; color: inherit; }
 
-  .main { max-width: 720px; margin: 0 auto; padding: 8px 16px 48px; width: 100%; }
-  @media (min-width: 860px) { .main { max-width: 980px; padding: 24px 32px 60px; } }
+  .main { max-width: 720px; margin: 0 auto; padding: 8px 12px 96px; width: 100%; }
+  @media (min-width: 860px) { .main { max-width: 1080px; padding: 24px 32px 60px; } }
 
-  .header { padding: 14px 4px 20px; }
+  .header { padding: 10px 4px 10px; }
   .kicker-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
-  .kicker { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 13px; font-weight: 590; letter-spacing: 0.02em; text-transform: uppercase; }
+  .brandrow { display: flex; align-items: center; gap: 8px; }
+  .brandmark { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
+  .kicker { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
   .synctag { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
   .synctag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
   .synctag.offline .dot { background: var(--amber); }
-  .signout { font-size: 12px; color: var(--blue); font-weight: 600; }
-  .titlerow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-  h1 { font-size: 34px; font-weight: 750; letter-spacing: -0.4px; margin: 0; }
-  .alltime-wrap { text-align: right; }
-  .alltime-label { font-size: 12px; color: var(--text-tertiary); font-weight: 590; }
-  .alltime-val { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 1px; }
+  h1 { font-size: 22px; font-weight: 780; letter-spacing: -0.2px; margin: 2px 0 0; }
 
-  .monthnav { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 18px 0 14px; background: var(--card); border-radius: 12px; padding: 4px; }
+  /* ---- Top summary cards (P&L + Goal) ---- */
+  .summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .summary-card { background: var(--card); border-radius: 16px; padding: 12px 14px; position: relative; }
+  .summary-label { font-size: 11px; color: var(--text-tertiary); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+  .summary-value { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .summary-editbtn { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-secondary); }
+  .summary-goalbar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 10px; }
+  .summary-goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+  .summary-goalnums { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-tertiary); margin-top: 5px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .summary-empty { font-size: 12px; color: var(--blue); font-weight: 650; margin-top: 8px; }
+  .summary-goalinput-row { display: flex; gap: 6px; margin-top: 8px; }
+  .summary-goalinput { flex: 1; min-width: 0; background: rgba(255,255,255,0.07); border: none; border-radius: 8px; padding: 7px 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .summary-goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 8px; padding: 7px 10px; font-size: 12px; }
+
+  /* ---- Filter chips row (asset) ---- */
+  .chiprow { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+  .chip { display: flex; align-items: center; gap: 5px; background: var(--card); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .chip b { color: var(--text); font-weight: 650; }
+  .chip .caret { font-size: 10px; color: var(--text-tertiary); }
+
+  .monthnav { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 4px 0 10px; background: var(--card); border-radius: 12px; padding: 4px; }
   .navbtn { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
   .navbtn:active { background: rgba(255,255,255,0.08); opacity: 1; }
   .monthlabel { flex: 1; text-align: center; font-size: 16px; font-weight: 650; }
@@ -72,24 +89,37 @@
   .installtip b { color: var(--text); }
   .installtip .icon { font-size: 20px; flex-shrink: 0; }
 
-  .cal-card { background: var(--card); border-radius: var(--radius-lg); padding: 14px 10px 16px; margin-bottom: 20px; }
+  .cal-card { background: var(--card); border-radius: var(--radius-lg); padding: 12px 8px 14px; margin-bottom: 14px; }
   .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
   .dow div { text-align: center; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-tertiary); padding-bottom: 4px; }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .cell { aspect-ratio: 1 / 1; min-height: 62px; background: var(--cell); border-radius: 11px; text-align: left; padding: 6px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cell { aspect-ratio: 0.82 / 1; min-height: 92px; background: var(--cell); border-radius: 13px; text-align: left; padding: 8px 7px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  @media (min-width: 480px) { .cell { min-height: 108px; padding: 9px 8px; } }
+  @media (min-width: 860px) { .cell { min-height: 128px; aspect-ratio: 1 / 0.92; } }
   .cell.empty { background: transparent; }
   .cell:not(.empty):active { transform: scale(0.94); opacity: 1; }
   .cell.win { background: var(--green-dim); }
   .cell.loss { background: var(--red-dim); }
-  .daynum { font-size: 11px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .daynum { font-size: 13px; font-weight: 650; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
   .daynum.today { color: var(--blue); }
   .todaydot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--blue); margin-left: 3px; vertical-align: middle; }
-  .pnlfig { font-size: 12px; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .pnlfig { font-size: 15px; font-weight: 700; line-height: 1.18; font-variant-numeric: tabular-nums; }
+  @media (min-width: 480px) { .pnlfig { font-size: 16px; } }
   .pnlfig.pos { color: var(--green); }
   .pnlfig.neg { color: var(--red); }
-  .tradecount { font-size: 9px; color: var(--text-tertiary); margin-top: 1px; font-weight: 500; }
+  .tradecount { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; font-weight: 550; }
+  .assettag { font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.08); border-radius: 5px; padding: 1px 5px; display: inline-block; margin-top: 3px; letter-spacing: 0.02em; }
   .cellphoto { position: absolute; inset: 0; object-fit: cover; opacity: 0.28; }
-  .notedot { position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+  .notedot { position: absolute; top: 6px; right: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+
+  /* ---- Bottom tab bar ---- */
+  .bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: rgba(20,20,22,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--separator); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  .navitem { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; color: var(--text-tertiary); font-size: 11px; font-weight: 600; }
+  .navitem .navicon { font-size: 20px; line-height: 1; }
+  .navitem.active { color: var(--blue); }
+  .tabpanel { display: none; }
+  .tabpanel.active { display: block; }
+  @media (min-width: 860px) { .bottomnav { display: none; } .main { padding-bottom: 60px; } .tabpanel { display: block !important; } }
 
   .panel { background: var(--card); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
   .paneltitle { font-size: 13px; font-weight: 650; color: var(--text-tertiary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.02em; }
@@ -146,6 +176,21 @@
   .lightbox img { max-width: 100%; max-height: 100%; border-radius: 14px; }
   .lightbox-close { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 16px; }
 
+  select.finput { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) center, calc(100% - 13px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+
+  .settingsrow { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--separator); }
+  .settingsrow:last-child { border-bottom: none; }
+  .settingsrow .label { font-size: 15px; }
+  .settingsrow .sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .settingsval { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .signoutbtn2 { color: var(--red); font-weight: 650; font-size: 15px; }
+  .assetlist-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
+  .assetlist-row:last-child { border-bottom: none; }
+  .assetremove { color: var(--red); font-size: 13px; font-weight: 600; }
+  .addasset-row { display: flex; gap: 8px; margin-top: 12px; }
+  .addasset-input { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; }
+  .addasset-btn { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+
   /* ---- Auth screen ---- */
   #authscreen { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
   #authscreen.hidden { display: none; }
@@ -172,8 +217,8 @@
 
   <div id="authscreen" class="hidden">
     <div class="authcard">
-      <div class="authlogo">📓</div>
-      <div class="authtitle">P&amp;L Ledger</div>
+      <img src="icon-192.png" alt="" style="width:72px; height:72px; border-radius:18px; display:block; margin:0 auto 14px;" />
+      <div class="authtitle">KUN</div>
       <div class="authsub" id="authsub">Log in to sync your trading journal across every device.</div>
       <input class="authinput" id="auth-email" type="email" placeholder="Email" autocomplete="email" />
       <input class="authinput" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
@@ -187,18 +232,11 @@
     <div class="main">
       <div class="header">
         <div class="kicker-row">
-          <div class="kicker">Trading Journal</div>
-          <div style="display:flex; align-items:center; gap:14px;">
-            <div class="synctag" id="synctag"><span class="dot"></span><span id="synctext">Synced</span></div>
-            <button class="signout" id="signoutbtn">Sign out</button>
+          <div class="brandrow">
+            <img src="icon-192.png" class="brandmark" alt="" />
+            <div class="kicker">KUN · Trading Journal</div>
           </div>
-        </div>
-        <div class="titlerow">
-          <h1>P&amp;L Ledger</h1>
-          <div class="alltime-wrap">
-            <div class="alltime-label">All-time</div>
-            <div class="alltime-val" id="alltime-val">$0.00</div>
-          </div>
+          <div class="synctag" id="synctag"><span class="dot"></span><span id="synctext">Synced</span></div>
         </div>
       </div>
 
@@ -207,25 +245,69 @@
         <span><b>Install this app:</b> tap the Share icon in Safari, then "Add to Home Screen."</span>
       </div>
 
-      <div class="monthnav">
-        <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
-        <div class="monthlabel" id="monthlabel"></div>
-        <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
-      </div>
-
-      <div class="layout2">
-        <div>
-          <div class="cal-card">
-            <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
-            <div class="grid" id="grid"></div>
+      <!-- ============ TAB: CALENDAR ============ -->
+      <div class="tabpanel active" id="tab-calendar">
+        <div class="summary-row">
+          <div class="summary-card">
+            <div class="summary-label">Total P&amp;L</div>
+            <div class="summary-value" id="summary-pnl">$0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Monthly Goal</div>
+            <button class="summary-editbtn" id="summary-goal-edit">✎</button>
+            <div id="summary-goal-body"></div>
           </div>
         </div>
-        <div>
-          <div class="panel"><div class="paneltitle">This Month</div><div id="stats"></div></div>
-          <div class="panel"><div class="paneltitle">Monthly Goal</div><div id="goalpanel"></div></div>
-          <div class="panel"><div class="paneltitle">Drawdown</div><div id="drawdown"></div></div>
+
+        <div class="chiprow">
+          <div class="chip" style="position:relative; padding-right:34px;">
+            <span>Asset:</span> <b id="assetFilterLabel">All</b> <span class="caret">▾</span>
+            <select id="assetFilterSelect" style="position:absolute; inset:0; opacity:0; width:100%; height:100%;">
+              <option value="">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="monthnav">
+          <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
+          <div class="monthlabel" id="monthlabel"></div>
+          <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
+        </div>
+
+        <div class="cal-card">
+          <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+          <div class="grid" id="grid"></div>
         </div>
       </div>
+
+      <!-- ============ TAB: ANALYTICS ============ -->
+      <div class="tabpanel" id="tab-analytics">
+        <div class="panel"><div class="paneltitle">This Month</div><div id="stats"></div></div>
+        <div class="panel"><div class="paneltitle">Drawdown</div><div id="drawdown"></div></div>
+      </div>
+
+      <!-- ============ TAB: SETTINGS ============ -->
+      <div class="tabpanel" id="tab-settings">
+        <div class="panel">
+          <div class="paneltitle">Account</div>
+          <div class="settingsrow"><div class="label">All-time P&amp;L</div><div class="settingsval" id="settings-alltime">$0.00</div></div>
+          <div class="settingsrow"><button class="signoutbtn2" id="signoutbtn">Sign out</button></div>
+        </div>
+        <div class="panel">
+          <div class="paneltitle">Your Assets</div>
+          <div id="assetlist"></div>
+          <div class="addasset-row">
+            <input class="addasset-input" id="newasset-input" placeholder="e.g. NQ, BTC, AAPL" />
+            <button class="addasset-btn" id="newasset-add">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottomnav">
+      <button class="navitem active" data-tab="calendar"><span class="navicon">📅</span>Calendar</button>
+      <button class="navitem" data-tab="analytics"><span class="navicon">📈</span>Analytics</button>
+      <button class="navitem" data-tab="settings"><span class="navicon">⚙️</span>Settings</button>
     </div>
   </div>
 
@@ -236,6 +318,10 @@
         <div class="modaldate" id="modaldate"></div>
         <button class="closebtn" id="closemodal">✕</button>
       </div>
+      <label class="flabel">Asset</label>
+      <select class="finput" id="f-asset">
+        <option value="">No asset tagged</option>
+      </select>
       <label class="flabel">P&amp;L</label>
       <input class="finput" id="f-pnl" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
       <label class="flabel">Trades</label>
@@ -269,13 +355,13 @@
   //    Project settings → General → Your apps → SDK setup and configuration)
   // =========================================================================
   const FIREBASE_CONFIG = {
-apiKey: "AIzaSyC4nWqW4seNiGQc-pEkExhT4dJJIU3Pda4",
-authDomain: "pnl-journal-6dcce.firebaseapp.com",
-projectId: "pnl-journal-6dcce",
-storageBucket: "pnl-journal-6dcce.firebasestorage.app",
-messagingSenderId: "718618497202",
-appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
-};
+    apiKey: "PASTE_ME",
+    authDomain: "PASTE_ME",
+    projectId: "PASTE_ME",
+    storageBucket: "PASTE_ME",
+    messagingSenderId: "PASTE_ME",
+    appId: "PASTE_ME"
+  };
 
   firebase.initializeApp(FIREBASE_CONFIG);
   const auth = firebase.auth();
@@ -286,12 +372,24 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
 
   let entries = {};
   let goals = {};
+  let assets = ["ES", "NQ", "BTC", "ETH", "AAPL", "TSLA", "EUR/USD", "GOLD"];
+  let selectedAssetFilter = "";
   let cursor = new Date();
   cursor.setDate(1);
   let activeKey = null;
   let activePhoto = null;
   let uid = null;
-  let unsubEntries = null, unsubGoals = null;
+  let unsubEntries = null, unsubGoals = null, unsubMeta = null;
+
+  // ---------- Tabs ----------
+  document.querySelectorAll(".navitem").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".navitem").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tabpanel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    };
+  });
 
   const pad2 = n => String(n).padStart(2, "0");
   const dayKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
@@ -351,6 +449,7 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
       uid = null;
       if (unsubEntries) unsubEntries();
       if (unsubGoals) unsubGoals();
+      if (unsubMeta) unsubMeta();
       document.getElementById("app").style.display = "none";
       document.getElementById("authscreen").classList.remove("hidden");
     }
@@ -368,6 +467,7 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
   function attachListeners() {
     const entriesCol = db.collection("users").doc(uid).collection("entries");
     const goalsCol = db.collection("users").doc(uid).collection("goals");
+    const metaDoc = db.collection("users").doc(uid).collection("meta").doc("settings");
 
     unsubEntries = entriesCol.onSnapshot((snap) => {
       entries = {};
@@ -379,9 +479,71 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
     unsubGoals = goalsCol.onSnapshot((snap) => {
       goals = {};
       snap.forEach((doc) => { goals[doc.id] = doc.data().target; });
-      renderStats();
+      renderSummary();
     }, () => {});
+
+    unsubMeta = metaDoc.onSnapshot((doc) => {
+      if (doc.exists && Array.isArray(doc.data().assets) && doc.data().assets.length) {
+        assets = doc.data().assets;
+      }
+      renderAssetSelects();
+      renderAssetSettingsList();
+      renderGrid();
+    }, () => { renderAssetSelects(); renderAssetSettingsList(); });
   }
+
+  function saveAssetsToCloud() {
+    db.collection("users").doc(uid).collection("meta").doc("settings").set({ assets }, { merge: true }).catch(() => {});
+  }
+
+  function renderAssetSelects() {
+    const opts = assets.map(a => `<option value="${a}">${a}</option>`).join("");
+    const fAsset = document.getElementById("f-asset");
+    const keep = fAsset.value;
+    fAsset.innerHTML = `<option value="">No asset tagged</option>${opts}`;
+    fAsset.value = keep;
+
+    const filterSel = document.getElementById("assetFilterSelect");
+    const keepFilter = filterSel.value;
+    filterSel.innerHTML = `<option value="">All</option>${opts}`;
+    filterSel.value = keepFilter;
+  }
+
+  function renderAssetSettingsList() {
+    const el = document.getElementById("assetlist");
+    if (!assets.length) { el.innerHTML = `<div class="ddempty">No assets added yet.</div>`; return; }
+    el.innerHTML = assets.map(a => `
+      <div class="assetlist-row">
+        <span>${a}</span>
+        <button class="assetremove" data-asset="${a}">Remove</button>
+      </div>
+    `).join("");
+    el.querySelectorAll(".assetremove").forEach(btn => {
+      btn.onclick = () => {
+        assets = assets.filter(a => a !== btn.dataset.asset);
+        saveAssetsToCloud();
+        renderAssetSelects();
+        renderAssetSettingsList();
+      };
+    });
+  }
+
+  document.getElementById("newasset-add").onclick = () => {
+    const input = document.getElementById("newasset-input");
+    const val = input.value.trim().toUpperCase();
+    if (!val || assets.includes(val)) { input.value = ""; return; }
+    assets.push(val);
+    saveAssetsToCloud();
+    renderAssetSelects();
+    renderAssetSettingsList();
+    input.value = "";
+  };
+
+  document.getElementById("assetFilterSelect").addEventListener("change", (e) => {
+    selectedAssetFilter = e.target.value;
+    document.getElementById("assetFilterLabel").textContent = selectedAssetFilter || "All";
+    renderGrid();
+  });
 
   function saveEntryToCloud(key, data) {
     setSyncStatus("syncing");
@@ -431,28 +593,36 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
       <div class="statrow"><span class="label">Avg P&amp;L / day</span><span class="value" style="color:${avgColor}">${s.avgPnl===null?"—":fmtMoney(s.avgPnl)}</span></div>
       <div class="statrow"><span class="label">Trades logged</span><span class="value">${s.totalTrades}</span></div>
     `;
-    const mKey = monthKey(cursor);
-    const target = goals[mKey];
-    const gp = document.getElementById("goalpanel");
-    if (target) {
-      const pct = Math.max(0, Math.min(100, (s.totalPnl/target)*100));
-      gp.innerHTML = `
-        <div class="goalnums"><span>${fmtMoney(s.totalPnl,false)}</span><span>${fmtMoney(target,false)}</span></div>
-        <div class="goalbar"><div style="width:${pct}%"></div></div>
-        <button class="goalset" id="editgoal" style="margin-top:12px">Edit target</button>`;
-      document.getElementById("editgoal").onclick = () => showGoalInput(target);
-    } else {
-      gp.innerHTML = `<button class="goalset" id="setgoal">+ Set a target for ${MONTHS[cursor.getMonth()]}</button>`;
-      document.getElementById("setgoal").onclick = () => showGoalInput("");
-    }
     const dd = document.getElementById("drawdown");
     if (s.dd.length > 1) dd.innerHTML = renderDrawdownSvg(s.dd) + `<div class="ddmeta">Max drawdown: <span style="color:var(--red)">${fmtMoney(s.maxDrawdown)}</span></div>`;
     else dd.innerHTML = `<div class="ddempty">Log a few days to see your drawdown curve.</div>`;
   }
 
+  function renderSummary() {
+    const s = computeStats();
+    const pnlEl = document.getElementById("summary-pnl");
+    pnlEl.textContent = fmtMoney(s.totalPnl);
+    pnlEl.style.color = s.totalPnl >= 0 ? "var(--green)" : "var(--red)";
+
+    const mKey = monthKey(cursor);
+    const target = goals[mKey];
+    const body = document.getElementById("summary-goal-body");
+    if (target) {
+      const pct = Math.max(0, Math.min(100, (s.totalPnl/target)*100));
+      body.innerHTML = `
+        <div class="summary-value">${fmtMoney(s.totalPnl, false)}</div>
+        <div class="summary-goalbar"><div style="width:${pct}%"></div></div>
+        <div class="summary-goalnums"><span>of ${fmtMoney(target,false)}</span><span>${pct.toFixed(0)}%</span></div>`;
+    } else {
+      body.innerHTML = `<button class="summary-empty" id="summary-setgoal">+ Set target</button>`;
+      document.getElementById("summary-setgoal").onclick = () => showGoalInput("");
+    }
+  }
+  document.getElementById("summary-goal-edit").onclick = () => showGoalInput(goals[monthKey(cursor)] || "");
+
   function showGoalInput(current) {
-    const gp = document.getElementById("goalpanel");
-    gp.innerHTML = `<div class="goalinput-row"><input class="goalinput" id="goalinput" type="number" placeholder="Target $" value="${current}" inputmode="decimal" /><button class="goalsave" id="goalsavebtn">Set</button></div>`;
+    const body = document.getElementById("summary-goal-body");
+    body.innerHTML = `<div class="summary-goalinput-row"><input class="summary-goalinput" id="goalinput" type="number" placeholder="Target $" value="${current}" inputmode="decimal" /><button class="summary-goalsave" id="goalsavebtn">Set</button></div>`;
     const input = document.getElementById("goalinput");
     input.focus();
     const save = () => {
@@ -499,15 +669,20 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
       if (!d) { cell.className = "cell empty"; grid.appendChild(cell); return; }
       const key = dayKey(d);
       const entry = entries[key];
-      const hasPnl = entry && entry.pnl !== null && entry.pnl !== undefined;
+      const hidden = entry && selectedAssetFilter && entry.asset !== selectedAssetFilter;
+      const hasPnl = entry && !hidden && entry.pnl !== null && entry.pnl !== undefined;
       cell.className = "cell " + (hasPnl ? (entry.pnl >= 0 ? "win" : "loss") : "");
       cell.type = "button";
       const isToday = key === todayKey;
       let html = "";
-      if (entry && entry.photo) html += `<img class="cellphoto" src="${entry.photo}" alt="" />`;
+      if (entry && !hidden && entry.photo) html += `<img class="cellphoto" src="${entry.photo}" alt="" />`;
       html += `<span class="daynum ${isToday?'today':''}">${pad2(d.getDate())}${isToday?'<span class="todaydot"></span>':''}</span>`;
-      html += hasPnl ? `<div><div class="pnlfig ${entry.pnl>=0?'pos':'neg'}">${fmtMoney(entry.pnl)}</div><div class="tradecount">${entry.trades||0} trade${entry.trades===1?"":"s"}</div></div>` : `<div></div>`;
-      if (entry && entry.note) html += `<span class="notedot"></span>`;
+      if (hasPnl) {
+        html += `<div><div class="pnlfig ${entry.pnl>=0?'pos':'neg'}">${fmtMoney(entry.pnl)}</div><div class="tradecount">${entry.trades||0} trade${entry.trades===1?"":"s"}</div>${entry.asset?`<span class="assettag">${entry.asset}</span>`:""}</div>`;
+      } else {
+        html += `<div></div>`;
+      }
+      if (entry && !hidden && entry.note) html += `<span class="notedot"></span>`;
       cell.innerHTML = html;
       cell.onclick = () => openDay(d, key);
       grid.appendChild(cell);
@@ -516,12 +691,12 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
 
   function renderAllTime() {
     const total = Object.values(entries).reduce((s,e)=>s+(e.pnl||0),0);
-    const el = document.getElementById("alltime-val");
+    const el = document.getElementById("settings-alltime");
     el.textContent = fmtMoney(total);
     el.style.color = total >= 0 ? "var(--green)" : "var(--red)";
   }
 
-  function renderAll() { renderGrid(); renderStats(); renderAllTime(); }
+  function renderAll() { renderGrid(); renderStats(); renderSummary(); renderAllTime(); }
 
   function renderPhotoArea() {
     const area = document.getElementById("photoArea");
@@ -567,6 +742,7 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
     const entry = entries[key] || {};
     activePhoto = entry.photo || null;
     document.getElementById("modaldate").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    document.getElementById("f-asset").value = entry.asset || "";
     document.getElementById("f-pnl").value = entry.pnl ?? "";
     document.getElementById("f-trades").value = entry.trades ?? "";
     document.getElementById("f-note").value = entry.note ?? "";
@@ -581,13 +757,14 @@ appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
 
   document.getElementById("savebtn").onclick = () => {
     if (!activeKey) return;
+    const asset = document.getElementById("f-asset").value;
     const pnlRaw = document.getElementById("f-pnl").value;
     const tradesRaw = document.getElementById("f-trades").value;
     const note = document.getElementById("f-note").value.trim();
     const pnl = pnlRaw === "" ? null : parseFloat(pnlRaw);
     const trades = tradesRaw === "" ? 0 : parseInt(tradesRaw, 10);
-    if (pnl === null && !note && !activePhoto) saveEntryToCloud(activeKey, null);
-    else saveEntryToCloud(activeKey, { pnl, trades: trades || 0, note, photo: activePhoto || null });
+    if (pnl === null && !note && !activePhoto && !asset) saveEntryToCloud(activeKey, null);
+    else saveEntryToCloud(activeKey, { asset: asset || null, pnl, trades: trades || 0, note, photo: activePhoto || null });
     closeModal();
   };
   document.getElementById("clearbtn").onclick = () => { if (!activeKey) return; saveEntryToCloud(activeKey, null); closeModal(); };

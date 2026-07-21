@@ -1,748 +1,805 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Trading Journal Calendar</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>KUN | P&L Ledger</title>
 
-    body {
-      background-color: #0f0f11;
-      color: #e1e1e6;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      padding-bottom: 100px;
-    }
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="KUN Ledger" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" href="icon-192.png" />
 
-    .header {
-      padding: 12px 16px;
-      background-color: #18181b;
-      border-bottom: 1px solid #27272a;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: relative;
-      z-index: 10;
-    }
+<!-- Firebase (free tier) — provides the account login + private cloud sync -->
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
 
-    .header h1 {
-      font-size: 1.1rem;
-      font-weight: 700;
-    }
+<style>
+  :root {
+    --bg: #000000;
+    --card: #1C1C1E;
+    --cell: #17171A;
+    --separator: rgba(255,255,255,0.09);
+    --text: #F5F5F7;
+    --text-secondary: rgba(235,235,245,0.60);
+    --text-tertiary: rgba(235,235,245,0.34);
+    --green: #32D74B;
+    --green-dim: rgba(50,215,75,0.14);
+    --red: #FF453A;
+    --red-dim: rgba(255,69,58,0.14);
+    --amber: #FF9F0A;
+    --blue: #0A84FF;
+    --radius-lg: 20px;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font); -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100vh; min-height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; -webkit-user-select: none; user-select: none; }
+  button:active { opacity: 0.55; }
+  input, textarea { font: inherit; color: inherit; }
 
-    .btn-add {
-      background-color: #2563eb;
-      color: #fff;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
+  .main { max-width: 720px; margin: 0 auto; padding: 8px 12px 96px; width: 100%; }
+  @media (min-width: 860px) { .main { max-width: 1080px; padding: 24px 32px 60px; } }
+  @media (orientation: landscape) and (max-height: 500px) { .main { max-width: 900px; padding: 6px 16px 84px; } }
 
-    .month-nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
-      background-color: #121215;
-      position: relative;
-      z-index: 10;
-    }
+  .header { padding: 10px 4px 10px; }
+  .kicker-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .brandrow { display: flex; align-items: center; gap: 8px; }
+  .brandmark { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
+  .kicker { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+  .synctag { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
+  .synctag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .synctag.offline .dot { background: var(--amber); }
+  h1 { font-size: 22px; font-weight: 780; letter-spacing: -0.2px; margin: 2px 0 0; }
 
-    .month-nav button {
-      background: #27272a;
-      border: none;
-      color: #fff;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-    }
+  /* ---- Top summary cards (P&L + Goal) ---- */
+  .summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  @media (orientation: landscape) and (max-height: 500px) {
+    .header { padding: 4px 4px 4px; }
+    .summary-row { margin: 6px 0; }
+    .summary-card { padding: 8px 12px; }
+    .summary-value { font-size: 17px; margin-top: 1px; }
+    .monthnav { margin: 4px 0 6px; }
+    .chiprow { margin: 2px 0 6px; }
+  }
+  .summary-card { background: var(--card); border-radius: 16px; padding: 12px 14px; position: relative; }
+  .summary-label { font-size: 11px; color: var(--text-tertiary); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+  .summary-value { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .summary-editbtn { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-secondary); }
+  .summary-goalbar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 10px; }
+  .summary-goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+  .summary-goalnums { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-tertiary); margin-top: 5px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .summary-empty { font-size: 12px; color: var(--blue); font-weight: 650; margin-top: 8px; }
+  .summary-goalinput-row { display: flex; gap: 6px; margin-top: 8px; }
+  .summary-goalinput { flex: 1; min-width: 0; background: rgba(255,255,255,0.07); border: none; border-radius: 8px; padding: 7px 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .summary-goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 8px; padding: 7px 10px; font-size: 12px; }
 
-    .month-title {
-      font-weight: 700;
-      font-size: 1rem;
-    }
+  /* ---- Filter chips row (asset) ---- */
+  .chiprow { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+  .chip { display: flex; align-items: center; gap: 5px; background: var(--card); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .chip b { color: var(--text); font-weight: 650; }
+  .chip .caret { font-size: 10px; color: var(--text-tertiary); }
 
-    .calendar-container {
-      width: 100%;
-      padding: 8px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      position: relative;
-      z-index: 10;
-    }
+  .monthnav { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 4px 0 10px; background: var(--card); border-radius: 12px; padding: 4px; }
+  .navbtn { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  .navbtn:active { background: rgba(255,255,255,0.08); opacity: 1; }
+  .monthlabel { flex: 1; text-align: center; font-size: 16px; font-weight: 650; }
 
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
-      width: 100%;
-    }
+  .installtip { display: none; }
+  .installtip.show { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+  .installtip b { color: var(--text); }
+  .installtip .icon { font-size: 20px; flex-shrink: 0; }
 
-    .day-header {
-      text-align: center;
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #a1a1aa;
-      padding: 4px 0;
-      text-transform: uppercase;
-    }
+  .cal-card { background: var(--card); border-radius: var(--radius-lg); padding: 12px 8px 14px; margin-bottom: 14px; }
+  .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+  .dow div { text-align: center; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-tertiary); padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cell { aspect-ratio: 0.85 / 1; min-height: 110px; background: var(--cell); border-radius: 13px; text-align: left; padding: 9px 8px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  @media (min-width: 480px) { .cell { min-height: 126px; padding: 10px 9px; } }
+  @media (min-width: 860px) { .cell { min-height: 150px; aspect-ratio: 1 / 0.9; } }
+  /* Landscape phones: less vertical room, so widen cells and shrink height instead of shrinking overall size */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .cell { aspect-ratio: 1.3 / 1; min-height: 72px; padding: 6px 8px; }
+    .grid { gap: 4px; }
+    .cal-card { padding: 8px 6px 10px; }
+    .pnlfig { font-size: 13px; }
+    .daynum { font-size: 11px; }
+  }
+  .cell.empty { background: transparent; }
+  .cell:not(.empty):active { transform: scale(0.94); opacity: 1; }
+  .cell.win { background: var(--green-dim); }
+  .cell.loss { background: var(--red-dim); }
+  .daynum { font-size: 13px; font-weight: 650; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .daynum.today { color: var(--blue); }
+  .todaydot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--blue); margin-left: 3px; vertical-align: middle; }
+  .pnlfig { font-size: 15px; font-weight: 700; line-height: 1.18; font-variant-numeric: tabular-nums; }
+  @media (min-width: 480px) { .pnlfig { font-size: 16px; } }
+  .pnlfig.pos { color: var(--green); }
+  .pnlfig.neg { color: var(--red); }
+  .tradecount { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; font-weight: 550; }
+  .assettag { font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.08); border-radius: 5px; padding: 1px 5px; display: inline-block; margin-top: 3px; letter-spacing: 0.02em; }
+  .cellphoto { position: absolute; inset: 0; object-fit: cover; opacity: 0.28; }
+  .notedot { position: absolute; top: 6px; right: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
 
-    .day-cell {
-      background-color: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 6px;
-      padding: 4px;
-      min-height: 85px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      min-width: 0;
-      overflow: hidden;
-      cursor: pointer;
-    }
+  /* ---- Bottom tab bar ---- */
+  .bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: rgba(20,20,22,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--separator); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  .navitem { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; color: var(--text-tertiary); font-size: 11px; font-weight: 600; }
+  .navitem .navicon { font-size: 20px; line-height: 1; }
+  .navitem.active { color: var(--blue); }
+  .tabpanel { display: none; }
+  .tabpanel.active { display: block; }
+  @media (min-width: 860px) { .bottomnav { display: none; } .main { padding-bottom: 60px; } .tabpanel { display: block !important; } }
 
-    .day-number {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #a1a1aa;
-    }
+  .panel { background: var(--card); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
+  .paneltitle { font-size: 13px; font-weight: 650; color: var(--text-tertiary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .statrow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--separator); font-size: 15px; }
+  .statrow:last-child { border-bottom: none; padding-bottom: 2px; }
+  .statrow:first-child { padding-top: 2px; }
+  .statrow .label { color: var(--text-secondary); }
+  .statrow .value { font-weight: 650; font-variant-numeric: tabular-nums; }
 
-    .trade-card {
-      border-radius: 4px;
-      padding: 4px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      overflow: hidden;
-    }
+  .goalbar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+  .goalnums { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .goalset { font-size: 14px; color: var(--blue); font-weight: 600; }
+  .goalinput-row { display: flex; gap: 8px; }
+  .goalinput { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; font-variant-numeric: tabular-nums; }
+  .goalinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 16px; font-size: 14px; }
 
-    .trade-card.profit {
-      background-color: rgba(22, 101, 52, 0.35);
-      border: 1px solid #166534;
-    }
+  .ddmeta { font-size: 13px; color: var(--text-secondary); margin-top: 8px; font-weight: 500; }
+  .ddempty { font-size: 13px; color: var(--text-tertiary); line-height: 1.5; }
 
-    .trade-card.loss {
-      background-color: rgba(153, 27, 27, 0.35);
-      border: 1px solid #991b1b;
-    }
+  @media (min-width: 860px) { .layout2 { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; } }
 
-    .pnl-amount {
-      font-weight: 700;
-      font-size: clamp(0.65rem, 2.2vw, 0.85rem);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; z-index: 50; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+  @media (min-width: 640px) { .overlay { align-items: center; } }
+  .sheet { background: #1C1C1E; width: 100%; max-width: 460px; border-radius: 20px 20px 0 0; padding: 10px 20px calc(24px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .3s cubic-bezier(.32,.72,0,1); max-height: 88vh; overflow-y: auto; }
+  .overlay.open .sheet { transform: translateY(0); }
+  @media (min-width: 640px) { .sheet { border-radius: 20px; padding: 20px 22px 22px; transform: translateY(12px) scale(0.97); } .overlay.open .sheet { transform: translateY(0) scale(1); } }
+  .grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.22); margin: 4px auto 14px; }
+  @media (min-width: 640px) { .grabber { display: none; } }
+  .modalhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .modaldate { font-size: 17px; font-weight: 700; }
+  .closebtn { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--text-secondary); }
+  .flabel { display: block; font-size: 12px; font-weight: 650; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 6px; }
+  .finput { width: 100%; background: rgba(255,255,255,0.06); border: none; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .finput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  #f-trades { font-size: 15px; }
+  textarea.finput { font-size: 15px; resize: none; font-variant-numeric: normal; }
+  .photo-row { margin-bottom: 16px; }
+  .photo-area { display: flex; align-items: center; gap: 10px; }
+  .photo-btn { width: 74px; height: 74px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.22); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--text-secondary); font-size: 10.5px; font-weight: 600; flex-shrink: 0; }
+  .photo-btn .plus { font-size: 20px; line-height: 1; color: var(--blue); }
+  .photo-preview-wrap { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
+  .photo-preview { width: 74px; height: 74px; border-radius: 14px; object-fit: cover; display: block; }
+  .photo-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #2C2C2E; border: 2px solid #1C1C1E; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .photo-hint { font-size: 12px; color: var(--text-tertiary); }
+  .modalbtns { display: flex; gap: 10px; margin-top: 4px; }
+  .btn-save { flex: 1; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; }
+  .btn-clear { padding: 14px 18px; background: rgba(255,69,58,0.12); border-radius: 13px; font-size: 15px; font-weight: 600; color: var(--red); }
 
-    .trade-card.profit .pnl-amount { color: #4ade80; }
-    .trade-card.loss .pnl-amount { color: #f87171; }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 14px; }
+  .lightbox-close { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 16px; }
 
-    .trade-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.6rem;
-      color: #a1a1aa;
-    }
+  select.finput { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) center, calc(100% - 13px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
 
-    .asset-badge {
-      background-color: rgba(255, 255, 255, 0.1);
-      padding: 1px 3px;
-      border-radius: 2px;
-      font-size: 0.55rem;
-      text-transform: uppercase;
-    }
+  .settingsrow { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--separator); }
+  .settingsrow:last-child { border-bottom: none; }
+  .settingsrow .label { font-size: 15px; }
+  .settingsrow .sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .settingsval { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .signoutbtn2 { color: var(--red); font-weight: 650; font-size: 15px; }
+  .assetlist-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
+  .assetlist-row:last-child { border-bottom: none; }
+  .assetremove { color: var(--red); font-size: 13px; font-weight: 600; }
+  .addasset-row { display: flex; gap: 8px; margin-top: 12px; }
+  .addasset-input { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; }
+  .addasset-btn { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
 
-    @media (max-width: 500px) {
-      .day-cell {
-        min-height: 68px;
-        padding: 3px;
-      }
-      .day-header {
-        font-size: 0.65rem;
-      }
-      .asset-badge {
-        display: none;
-      }
-    }
-
-    @media (min-width: 501px) and (max-width: 900px) and (orientation: landscape) {
-      .day-cell {
-        min-height: 95px;
-      }
-      .asset-badge {
-        display: inline-block;
-      }
-    }
-
-    /* ===== VIEWS (Calendar / Analytics / Settings) ===== */
-    .view {
-      display: none;
-    }
-    .view.active {
-      display: block;
-    }
-
-    .analytics-wrap, .settings-wrap {
-      padding: 16px;
-    }
-
-    .stat-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .stat-card {
-      background-color: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 8px;
-      padding: 14px;
-    }
-
-    .stat-label {
-      font-size: 0.7rem;
-      color: #a1a1aa;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .stat-value {
-      font-size: 1.3rem;
-      font-weight: 700;
-    }
-
-    .stat-value.positive { color: #4ade80; }
-    .stat-value.negative { color: #f87171; }
-
-    .section-title {
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin: 18px 0 10px 0;
-      color: #e1e1e6;
-    }
-
-    .trade-list-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background-color: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 8px;
-      padding: 10px 12px;
-      margin-bottom: 8px;
-      font-size: 0.85rem;
-    }
-
-    .settings-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background-color: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 8px;
-      padding: 14px;
-      margin-bottom: 10px;
-    }
-
-    .settings-row-label {
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .settings-row-desc {
-      font-size: 0.75rem;
-      color: #a1a1aa;
-      margin-top: 2px;
-    }
-
-    .btn-danger {
-      background-color: #991b1b;
-      color: #fff;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-
-    /* MODAL */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 99999;
-      pointer-events: none;
-    }
-
-    .modal-overlay.open {
-      display: flex !important;
-      pointer-events: auto !important;
-    }
-
-    .modal-content {
-      background-color: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 380px;
-      padding: 20px;
-    }
-
-    .modal-header {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 16px;
-    }
-
-    .form-group {
-      margin-bottom: 14px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 0.75rem;
-      color: #a1a1aa;
-      margin-bottom: 6px;
-    }
-
-    .type-toggle {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .type-btn {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #27272a;
-      background: #27272a;
-      color: #a1a1aa;
-      border-radius: 6px;
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-    }
-
-    .type-btn.active-profit {
-      background-color: #166534;
-      color: #4ade80;
-      border-color: #22c55e;
-    }
-
-    .type-btn.active-loss {
-      background-color: #991b1b;
-      color: #f87171;
-      border-color: #ef4444;
-    }
-
-    .form-input {
-      width: 100%;
-      padding: 10px;
-      background-color: #0f0f11;
-      border: 1px solid #27272a;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 0.95rem;
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .btn-submit {
-      flex: 1;
-      background-color: #2563eb;
-      color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .btn-cancel {
-      flex: 1;
-      background-color: #27272a;
-      color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    /* BOTTOM NAV */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      background-color: #18181b;
-      border-top: 1px solid #27272a;
-      display: flex;
-      justify-content: space-around;
-      padding: 12px 0 16px 0;
-      z-index: 1000;
-      pointer-events: auto;
-    }
-
-    .nav-item {
-      color: #a1a1aa;
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-decoration: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      flex: 1;
-      cursor: pointer;
-      background: none;
-      border: none;
-    }
-
-    .nav-icon {
-      font-size: 1.5rem;
-      line-height: 1;
-    }
-
-    .nav-item.active {
-      color: #3b82f6;
-    }
-  </style>
+  /* ---- Auth screen ---- */
+  #authscreen { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  #authscreen.hidden { display: none; }
+  .authcard { width: 100%; max-width: 360px; }
+  .authlogo { font-size: 40px; text-align: center; margin-bottom: 6px; }
+  .authtitle { font-size: 26px; font-weight: 750; text-align: center; margin-bottom: 4px; letter-spacing: -0.3px; }
+  .authsub { font-size: 14px; color: var(--text-secondary); text-align: center; margin-bottom: 28px; line-height: 1.4; }
+  .authinput { width: 100%; background: var(--card); border: none; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; font-size: 16px; }
+  .authinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .authbtn { width: 100%; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; margin-top: 8px; }
+  .authbtn:disabled { opacity: 0.5; }
+  .authtoggle { text-align: center; margin-top: 18px; font-size: 14px; color: var(--text-secondary); }
+  .authtoggle button { color: var(--blue); font-weight: 600; }
+  .autherror { color: var(--red); font-size: 13px; text-align: center; margin-top: 10px; min-height: 16px; }
+  .authloading { display: flex; align-items: center; justify-content: center; height: 100vh; color: var(--text-tertiary); font-size: 14px; }
+  .configwarn { background: var(--card); border: 1px solid var(--amber); border-radius: 14px; padding: 16px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); max-width: 420px; }
+  .configwarn b { color: var(--amber); }
+  .configwarn code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
 </head>
 <body>
 
-  <!-- Header -->
-  <div class="header">
-    <h1>Trading Journal</h1>
-    <button class="btn-add" onclick="openModal()">+ Add Trade</button>
-  </div>
+  <div id="authloading" class="authloading">Loading…</div>
 
-  <!-- ===== CALENDAR VIEW ===== -->
-  <div class="view active" id="view-Calendar">
-    <div class="month-nav">
-      <button onclick="changeMonth(-1)">&lt;</button>
-      <div class="month-title" id="monthDisplay">July 2026</div>
-      <button onclick="changeMonth(1)">&gt;</button>
-    </div>
-
-    <div class="calendar-container">
-      <div class="calendar-grid" id="calendarGrid"></div>
+  <div id="authscreen" class="hidden">
+    <div class="authcard">
+      <img src="icon-192.png" alt="" style="width:72px; height:72px; border-radius:18px; display:block; margin:0 auto 14px;" />
+      <div class="authtitle">KUN</div>
+      <div class="authsub" id="authsub">Log in to sync your trading journal across every device.</div>
+      <input class="authinput" id="auth-email" type="email" placeholder="Email" autocomplete="email" />
+      <input class="authinput" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button class="authbtn" id="auth-submit">Log In</button>
+      <div class="autherror" id="auth-error"></div>
+      <div class="authtoggle" id="authtoggle">New here? <button id="authtoggle-btn">Create an account</button></div>
     </div>
   </div>
 
-  <!-- ===== ANALYTICS VIEW ===== -->
-  <div class="view" id="view-Analytics">
-    <div class="analytics-wrap">
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-label">Total P&amp;L</div>
-          <div class="stat-value" id="statTotalPnl">$0.00</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Win Rate</div>
-          <div class="stat-value" id="statWinRate">0%</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Total Trades</div>
-          <div class="stat-value" id="statTotalTrades">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Avg P&amp;L / Day</div>
-          <div class="stat-value" id="statAvgPnl">$0.00</div>
+  <div id="app" style="display:none">
+    <div class="main">
+      <div class="header">
+        <div class="kicker-row">
+          <div class="brandrow">
+            <img src="icon-192.png" class="brandmark" alt="" />
+            <div class="kicker">KUN · Trading Journal</div>
+          </div>
+          <div class="synctag" id="synctag"><span class="dot"></span><span id="synctext">Synced</span></div>
         </div>
       </div>
 
-      <div class="section-title">Recent Trades</div>
-      <div id="recentTradesList"></div>
+      <div class="installtip" id="installtip">
+        <span class="icon">📲</span>
+        <span><b>Install this app:</b> tap the Share icon in Safari, then "Add to Home Screen."</span>
+      </div>
+
+      <!-- ============ TAB: CALENDAR ============ -->
+      <div class="tabpanel active" id="tab-calendar">
+        <div class="summary-row">
+          <div class="summary-card">
+            <div class="summary-label">Total P&amp;L</div>
+            <div class="summary-value" id="summary-pnl">$0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Monthly Goal</div>
+            <button class="summary-editbtn" id="summary-goal-edit">✎</button>
+            <div id="summary-goal-body"></div>
+          </div>
+        </div>
+
+        <div class="chiprow">
+          <div class="chip" style="position:relative; padding-right:34px;">
+            <span>Asset:</span> <b id="assetFilterLabel">All</b> <span class="caret">▾</span>
+            <select id="assetFilterSelect" style="position:absolute; inset:0; opacity:0; width:100%; height:100%;">
+              <option value="">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="monthnav">
+          <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
+          <div class="monthlabel" id="monthlabel"></div>
+          <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
+        </div>
+
+        <div class="cal-card">
+          <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+          <div class="grid" id="grid"></div>
+        </div>
+      </div>
+
+      <!-- ============ TAB: ANALYTICS ============ -->
+      <div class="tabpanel" id="tab-analytics">
+        <div class="panel"><div class="paneltitle">This Month</div><div id="stats"></div></div>
+        <div class="panel"><div class="paneltitle">Drawdown</div><div id="drawdown"></div></div>
+      </div>
+
+      <!-- ============ TAB: SETTINGS ============ -->
+      <div class="tabpanel" id="tab-settings">
+        <div class="panel">
+          <div class="paneltitle">Account</div>
+          <div class="settingsrow"><div class="label">All-time P&amp;L</div><div class="settingsval" id="settings-alltime">$0.00</div></div>
+          <div class="settingsrow"><button class="signoutbtn2" id="signoutbtn">Sign out</button></div>
+        </div>
+        <div class="panel">
+          <div class="paneltitle">Your Assets</div>
+          <div id="assetlist"></div>
+          <div class="addasset-row">
+            <input class="addasset-input" id="newasset-input" placeholder="e.g. NQ, BTC, AAPL" />
+            <button class="addasset-btn" id="newasset-add">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottomnav">
+      <button class="navitem active" data-tab="calendar"><span class="navicon">📅</span>Calendar</button>
+      <button class="navitem" data-tab="analytics"><span class="navicon">📈</span>Analytics</button>
+      <button class="navitem" data-tab="settings"><span class="navicon">⚙️</span>Settings</button>
     </div>
   </div>
 
-  <!-- ===== SETTINGS VIEW ===== -->
-  <div class="view" id="view-Settings">
-    <div class="settings-wrap">
-      <div class="section-title" style="margin-top:0;">Preferences</div>
-
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label">Default asset</div>
-          <div class="settings-row-desc">Used to pre-fill new trades</div>
-        </div>
-        <input type="text" class="form-input" style="width:90px; text-align:center;" id="defaultAssetInput" value="MNQ" />
+  <div class="overlay" id="overlay">
+    <div class="sheet">
+      <div class="grabber"></div>
+      <div class="modalhead">
+        <div class="modaldate" id="modaldate"></div>
+        <button class="closebtn" id="closemodal">✕</button>
       </div>
-
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label">Clear all trades</div>
-          <div class="settings-row-desc">Removes every logged trade</div>
+      <label class="flabel">Asset</label>
+      <select class="finput" id="f-asset">
+        <option value="">No asset tagged</option>
+      </select>
+      <label class="flabel">P&amp;L</label>
+      <input class="finput" id="f-pnl" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
+      <label class="flabel">Trades</label>
+      <input class="finput" id="f-trades" type="number" min="0" placeholder="0" inputmode="numeric" />
+      <label class="flabel">Journal Note</label>
+      <textarea class="finput" id="f-note" rows="3" placeholder="Risk, outcome, emotion…"></textarea>
+      <div class="photo-row">
+        <label class="flabel">Chart Screenshot</label>
+        <div class="photo-area" id="photoArea">
+          <button class="photo-btn" id="photoAddBtn" type="button"><span class="plus">＋</span><span>Add photo</span></button>
+          <span class="photo-hint">Attach a chart or trade screenshot</span>
         </div>
-        <button class="btn-danger" onclick="clearAllTrades()">Clear</button>
+        <input type="file" accept="image/*" id="photoInput" style="display:none" />
+      </div>
+      <div class="modalbtns">
+        <button class="btn-save" id="savebtn">Save</button>
+        <button class="btn-clear" id="clearbtn">Clear</button>
       </div>
     </div>
   </div>
 
-  <!-- Trade Entry Modal -->
-  <div class="modal-overlay" id="tradeModal">
-    <div class="modal-content">
-      <div class="modal-header">Log Trade</div>
-
-      <label style="font-size:0.75rem; color:#a1a1aa; margin-bottom:6px; display:block;">Trade Result</label>
-      <div class="type-toggle">
-        <button type="button" class="type-btn active-profit" id="btnProfit" onclick="setTradeType('profit')">+ Profit</button>
-        <button type="button" class="type-btn" id="btnLoss" onclick="setTradeType('loss')">- Loss</button>
-      </div>
-
-      <div class="form-group">
-        <label for="tradeDate">Date</label>
-        <input type="date" id="tradeDate" class="form-input" />
-      </div>
-
-      <div class="form-group">
-        <label for="tradeAmount">Amount ($)</label>
-        <input type="number" step="any" id="tradeAmount" class="form-input" placeholder="e.g. 300" />
-      </div>
-
-      <div class="form-group">
-        <label for="tradeAsset">Asset</label>
-        <input type="text" id="tradeAsset" class="form-input" placeholder="MNQ, NQ, Gold..." value="MNQ" />
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button type="button" class="btn-submit" onclick="saveTrade()">Save Trade</button>
-      </div>
-    </div>
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">✕</button>
+    <img id="lightboxImg" src="" alt="Trade screenshot" />
   </div>
 
-  <!-- Bottom Navigation -->
-  <div class="bottom-nav">
-    <button class="nav-item active" id="tab-Calendar" onclick="switchTab('Calendar')">
-      <span class="nav-icon">📅</span>
-      <span>Calendar</span>
-    </button>
-    <button class="nav-item" id="tab-Analytics" onclick="switchTab('Analytics')">
-      <span class="nav-icon">📊</span>
-      <span>Analytics</span>
-    </button>
-    <button class="nav-item" id="tab-Settings" onclick="switchTab('Settings')">
-      <span class="nav-icon">⚙️</span>
-      <span>Settings</span>
-    </button>
-  </div>
+<script>
+(function() {
+  // =========================================================================
+  // 1) PASTE YOUR FIREBASE PROJECT CONFIG HERE (from Firebase Console →
+  //    Project settings → General → Your apps → SDK setup and configuration)
+  // =========================================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC4nWqW4seNiGQc-pEkExhT4dJJIU3Pda4",
+    authDomain: "pnl-journal-6dcce.firebaseapp.com",
+    projectId: "pnl-journal-6dcce",
+    storageBucket: "pnl-journal-6dcce.firebasestorage.app",
+    messagingSenderId: "718618497202",
+    appId: "1:718618497202:web:13f2ba8e205b60f28139ab"
+  };
 
-  <script>
-    var currentDate = new Date(2026, 6, 1);
-    var selectedTradeType = 'profit';
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
-    var trades = [
-      { date: '2026-07-20', amount: 313.50, asset: 'MNQ', count: 1 },
-      { date: '2026-07-21', amount: -300.00, asset: 'MNQ', count: 2 }
-    ];
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-    // ---------- TAB SWITCHING ----------
-    function switchTab(tabName) {
-      ['Calendar', 'Analytics', 'Settings'].forEach(function(name) {
-        document.getElementById('view-' + name).classList.remove('active');
-        document.getElementById('tab-' + name).classList.remove('active');
-      });
-      document.getElementById('view-' + tabName).classList.add('active');
-      document.getElementById('tab-' + tabName).classList.add('active');
+  let entries = {};
+  let goals = {};
+  let assets = ["ES", "NQ", "BTC", "ETH", "AAPL", "TSLA", "EUR/USD", "GOLD"];
+  let selectedAssetFilter = "";
+  let cursor = new Date();
+  cursor.setDate(1);
+  let activeKey = null;
+  let activePhoto = null;
+  let uid = null;
+  let unsubEntries = null, unsubGoals = null, unsubMeta = null;
 
-      if (tabName === 'Analytics') {
-        renderAnalytics();
+  // ---------- Tabs ----------
+  document.querySelectorAll(".navitem").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".navitem").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tabpanel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    };
+  });
+
+  const pad2 = n => String(n).padStart(2, "0");
+  const dayKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const monthKey = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+
+  function fmtMoney(n, forceSign = true) {
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    if (n === 0) return "$0.00";
+    const abs = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const sign = n > 0 ? (forceSign ? "+" : "") : "−";
+    return `${sign}$${abs}`;
+  }
+
+  // ---------- Auth ----------
+  let isSignUp = false;
+  document.getElementById("authtoggle-btn").onclick = () => {
+    isSignUp = !isSignUp;
+    document.getElementById("auth-submit").textContent = isSignUp ? "Create Account" : "Log In";
+    document.getElementById("authsub").textContent = isSignUp
+      ? "Create an account, then log in with it on your other devices."
+      : "Log in to sync your trading journal across every device.";
+    document.getElementById("authtoggle").innerHTML = isSignUp
+      ? `Already have an account? <button id="authtoggle-btn2">Log in</button>`
+      : `New here? <button id="authtoggle-btn2">Create an account</button>`;
+    document.getElementById("authtoggle-btn2").onclick = document.getElementById("authtoggle-btn").onclick;
+    document.getElementById("auth-error").textContent = "";
+  };
+
+  document.getElementById("auth-submit").onclick = async () => {
+    const email = document.getElementById("auth-email").value.trim();
+    const password = document.getElementById("auth-password").value;
+    const errEl = document.getElementById("auth-error");
+    errEl.textContent = "";
+    if (!email || !password) { errEl.textContent = "Enter an email and password."; return; }
+    if (password.length < 6) { errEl.textContent = "Password must be at least 6 characters."; return; }
+    const btn = document.getElementById("auth-submit");
+    btn.disabled = true;
+    try {
+      if (isSignUp) await auth.createUserWithEmailAndPassword(email, password);
+      else await auth.signInWithEmailAndPassword(email, password);
+    } catch (e) {
+      errEl.textContent = e.message.replace(/^Firebase:\s*/, "");
+    }
+    btn.disabled = false;
+  };
+
+  document.getElementById("signoutbtn").onclick = () => auth.signOut();
+
+  auth.onAuthStateChanged((user) => {
+    document.getElementById("authloading").style.display = "none";
+    if (user) {
+      uid = user.uid;
+      document.getElementById("authscreen").classList.add("hidden");
+      document.getElementById("app").style.display = "block";
+      attachListeners();
+    } else {
+      uid = null;
+      if (unsubEntries) unsubEntries();
+      if (unsubGoals) unsubGoals();
+      if (unsubMeta) unsubMeta();
+      document.getElementById("app").style.display = "none";
+      document.getElementById("authscreen").classList.remove("hidden");
+    }
+  });
+
+  // ---------- Firestore sync ----------
+  function setSyncStatus(state) {
+    const tag = document.getElementById("synctag");
+    const text = document.getElementById("synctext");
+    if (state === "synced") { tag.classList.remove("offline"); text.textContent = "Synced"; }
+    else if (state === "syncing") { tag.classList.remove("offline"); text.textContent = "Syncing…"; }
+    else { tag.classList.add("offline"); text.textContent = "Offline — will sync"; }
+  }
+
+  function attachListeners() {
+    const entriesCol = db.collection("users").doc(uid).collection("entries");
+    const goalsCol = db.collection("users").doc(uid).collection("goals");
+    const metaDoc = db.collection("users").doc(uid).collection("meta").doc("settings");
+
+    unsubEntries = entriesCol.onSnapshot((snap) => {
+      entries = {};
+      snap.forEach((doc) => { entries[doc.id] = doc.data(); });
+      renderAll();
+      setSyncStatus(snap.metadata.fromCache ? "offline" : "synced");
+    }, () => setSyncStatus("offline"));
+
+    unsubGoals = goalsCol.onSnapshot((snap) => {
+      goals = {};
+      snap.forEach((doc) => { goals[doc.id] = doc.data().target; });
+      renderSummary();
+    }, () => {});
+
+    unsubMeta = metaDoc.onSnapshot((doc) => {
+      if (doc.exists && Array.isArray(doc.data().assets) && doc.data().assets.length) {
+        assets = doc.data().assets;
       }
+      renderAssetSelects();
+      renderAssetSettingsList();
+      renderGrid();
+    }, () => { renderAssetSelects(); renderAssetSettingsList(); });
+  }
+
+  function saveAssetsToCloud() {
+    db.collection("users").doc(uid).collection("meta").doc("settings").set({ assets }, { merge: true }).catch(() => {});
+  }
+
+  function renderAssetSelects() {
+    const opts = assets.map(a => `<option value="${a}">${a}</option>`).join("");
+    const fAsset = document.getElementById("f-asset");
+    const keep = fAsset.value;
+    fAsset.innerHTML = `<option value="">No asset tagged</option>${opts}`;
+    fAsset.value = keep;
+
+    const filterSel = document.getElementById("assetFilterSelect");
+    const keepFilter = filterSel.value;
+    filterSel.innerHTML = `<option value="">All</option>${opts}`;
+    filterSel.value = keepFilter;
+  }
+
+  function renderAssetSettingsList() {
+    const el = document.getElementById("assetlist");
+    if (!assets.length) { el.innerHTML = `<div class="ddempty">No assets added yet.</div>`; return; }
+    el.innerHTML = assets.map(a => `
+      <div class="assetlist-row">
+        <span>${a}</span>
+        <button class="assetremove" data-asset="${a}">Remove</button>
+      </div>
+    `).join("");
+    el.querySelectorAll(".assetremove").forEach(btn => {
+      btn.onclick = () => {
+        assets = assets.filter(a => a !== btn.dataset.asset);
+        saveAssetsToCloud();
+        renderAssetSelects();
+        renderAssetSettingsList();
+      };
+    });
+  }
+
+  document.getElementById("newasset-add").onclick = () => {
+    const input = document.getElementById("newasset-input");
+    const val = input.value.trim().toUpperCase();
+    if (!val || assets.includes(val)) { input.value = ""; return; }
+    assets.push(val);
+    saveAssetsToCloud();
+    renderAssetSelects();
+    renderAssetSettingsList();
+    input.value = "";
+  };
+
+  document.getElementById("assetFilterSelect").addEventListener("change", (e) => {
+    selectedAssetFilter = e.target.value;
+    document.getElementById("assetFilterLabel").textContent = selectedAssetFilter || "All";
+    renderGrid();
+  });
+
+  function saveEntryToCloud(key, data) {
+    setSyncStatus("syncing");
+    const entriesCol = db.collection("users").doc(uid).collection("entries");
+    if (data === null) entriesCol.doc(key).delete().catch(() => {});
+    else entriesCol.doc(key).set(data).catch(() => {});
+  }
+  function saveGoalToCloud(key, target) {
+    const goalsCol = db.collection("users").doc(uid).collection("goals");
+    if (target === null) goalsCol.doc(key).delete().catch(() => {});
+    else goalsCol.doc(key).set({ target }).catch(() => {});
+  }
+
+  // ---------- Stats ----------
+  function computeStats() {
+    const mKey = monthKey(cursor);
+    const monthEntries = Object.keys(entries).filter(k => k.startsWith(mKey)).sort().map(k => ({ date: k, ...entries[k] }));
+    const trading = monthEntries.filter(e => e.pnl !== null && e.pnl !== undefined);
+    const wins = trading.filter(e => e.pnl > 0);
+    const losses = trading.filter(e => e.pnl < 0);
+    const totalPnl = trading.reduce((s,e)=>s+e.pnl,0);
+    const grossWin = wins.reduce((s,e)=>s+e.pnl,0);
+    const grossLoss = Math.abs(losses.reduce((s,e)=>s+e.pnl,0));
+    const winRate = trading.length ? (wins.length/trading.length)*100 : null;
+    const profitFactor = grossLoss > 0 ? grossWin/grossLoss : (grossWin > 0 ? Infinity : null);
+    const avgWin = wins.length ? grossWin/wins.length : 0;
+    const avgLoss = losses.length ? grossLoss/losses.length : 0;
+    const expectancy = trading.length ? (winRate/100)*avgWin - (1-winRate/100)*avgLoss : null;
+    const avgPnl = trading.length ? totalPnl/trading.length : null;
+    const totalTrades = trading.reduce((s,e)=>s+(e.trades||0),0);
+    let running = 0, peak = 0;
+    const dd = trading.map(e => { running += e.pnl; peak = Math.max(peak, running); return { date: e.date.slice(8), drawdown: running - peak }; });
+    const maxDrawdown = dd.length ? Math.min(...dd.map(x=>x.drawdown)) : 0;
+    return { totalPnl, winRate, profitFactor, expectancy, avgPnl, totalTrades, dd, maxDrawdown };
+  }
+
+  function renderStats() {
+    const s = computeStats();
+    const pnlColor = s.totalPnl >= 0 ? "var(--green)" : "var(--red)";
+    const expColor = (s.expectancy||0) >= 0 ? "var(--green)" : "var(--red)";
+    const avgColor = (s.avgPnl||0) >= 0 ? "var(--green)" : "var(--red)";
+    document.getElementById("stats").innerHTML = `
+      <div class="statrow"><span class="label">Total P&amp;L</span><span class="value" style="color:${pnlColor}">${fmtMoney(s.totalPnl)}</span></div>
+      <div class="statrow"><span class="label">Win rate</span><span class="value">${s.winRate===null?"—":s.winRate.toFixed(0)+"%"}</span></div>
+      <div class="statrow"><span class="label">Profit factor</span><span class="value">${s.profitFactor===null?"—":(s.profitFactor===Infinity?"∞":s.profitFactor.toFixed(2))}</span></div>
+      <div class="statrow"><span class="label">Expectancy</span><span class="value" style="color:${expColor}">${s.expectancy===null?"—":fmtMoney(s.expectancy)}</span></div>
+      <div class="statrow"><span class="label">Avg P&amp;L / day</span><span class="value" style="color:${avgColor}">${s.avgPnl===null?"—":fmtMoney(s.avgPnl)}</span></div>
+      <div class="statrow"><span class="label">Trades logged</span><span class="value">${s.totalTrades}</span></div>
+    `;
+    const dd = document.getElementById("drawdown");
+    if (s.dd.length > 1) dd.innerHTML = renderDrawdownSvg(s.dd) + `<div class="ddmeta">Max drawdown: <span style="color:var(--red)">${fmtMoney(s.maxDrawdown)}</span></div>`;
+    else dd.innerHTML = `<div class="ddempty">Log a few days to see your drawdown curve.</div>`;
+  }
+
+  function renderSummary() {
+    const s = computeStats();
+    const pnlEl = document.getElementById("summary-pnl");
+    pnlEl.textContent = fmtMoney(s.totalPnl);
+    pnlEl.style.color = s.totalPnl >= 0 ? "var(--green)" : "var(--red)";
+
+    const mKey = monthKey(cursor);
+    const target = goals[mKey];
+    const body = document.getElementById("summary-goal-body");
+    if (target) {
+      const pct = Math.max(0, Math.min(100, (s.totalPnl/target)*100));
+      body.innerHTML = `
+        <div class="summary-value">${fmtMoney(s.totalPnl, false)}</div>
+        <div class="summary-goalbar"><div style="width:${pct}%"></div></div>
+        <div class="summary-goalnums"><span>of ${fmtMoney(target,false)}</span><span>${pct.toFixed(0)}%</span></div>`;
+    } else {
+      body.innerHTML = `<button class="summary-empty" id="summary-setgoal">+ Set target</button>`;
+      document.getElementById("summary-setgoal").onclick = () => showGoalInput("");
     }
+  }
+  document.getElementById("summary-goal-edit").onclick = () => showGoalInput(goals[monthKey(cursor)] || "");
 
-    function renderAnalytics() {
-      var total = 0;
-      var wins = 0;
-      trades.forEach(function(t) {
-        total += t.amount;
-        if (t.amount >= 0) wins++;
-      });
-      var winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
-      var avg = trades.length ? total / trades.length : 0;
+  function showGoalInput(current) {
+    const body = document.getElementById("summary-goal-body");
+    body.innerHTML = `<div class="summary-goalinput-row"><input class="summary-goalinput" id="goalinput" type="number" placeholder="Target $" value="${current}" inputmode="decimal" /><button class="summary-goalsave" id="goalsavebtn">Set</button></div>`;
+    const input = document.getElementById("goalinput");
+    input.focus();
+    const save = () => {
+      const val = parseFloat(input.value);
+      const mKey = monthKey(cursor);
+      saveGoalToCloud(mKey, (!isNaN(val) && val > 0) ? val : null);
+    };
+    document.getElementById("goalsavebtn").onclick = save;
+    input.addEventListener("keydown", e => { if (e.key === "Enter") save(); });
+  }
 
-      var totalEl = document.getElementById('statTotalPnl');
-      totalEl.textContent = (total >= 0 ? '+' : '-') + '$' + Math.abs(total).toFixed(2);
-      totalEl.className = 'stat-value ' + (total >= 0 ? 'positive' : 'negative');
+  function renderDrawdownSvg(dd) {
+    const w = 280, h = 110, pad = 6;
+    const vals = dd.map(d => d.drawdown);
+    const min = Math.min(...vals, 0), max = Math.max(...vals, 0);
+    const range = (max - min) || 1;
+    const stepX = (w - pad*2) / (dd.length - 1);
+    const zeroY = pad + (max - 0) / range * (h - pad*2);
+    const pts = dd.map((d,i) => { const x = pad + i*stepX; const y = pad + (max - d.drawdown) / range * (h - pad*2); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(" ");
+    const last = pts.split(" ").pop().split(",");
+    return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:110px" preserveAspectRatio="none">
+      <defs><linearGradient id="ddgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF453A" stop-opacity="0.25"/><stop offset="100%" stop-color="#FF453A" stop-opacity="0"/></linearGradient></defs>
+      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${w}" y2="${zeroY.toFixed(1)}" stroke="rgba(255,255,255,0.12)" stroke-width="1" />
+      <polygon points="${pad},${zeroY.toFixed(1)} ${pts} ${last[0]},${zeroY.toFixed(1)}" fill="url(#ddgrad)" />
+      <polyline points="${pts}" fill="none" stroke="#FF453A" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+    </svg>`;
+  }
 
-      document.getElementById('statWinRate').textContent = winRate + '%';
-      document.getElementById('statTotalTrades').textContent = trades.length;
-
-      var avgEl = document.getElementById('statAvgPnl');
-      avgEl.textContent = (avg >= 0 ? '+' : '-') + '$' + Math.abs(avg).toFixed(2);
-      avgEl.className = 'stat-value ' + (avg >= 0 ? 'positive' : 'negative');
-
-      var list = document.getElementById('recentTradesList');
-      var sorted = trades.slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
-      list.innerHTML = sorted.map(function(t) {
-        var isLoss = t.amount < 0;
-        var formatted = (t.amount >= 0 ? '+' : '-') + '$' + Math.abs(t.amount).toFixed(2);
-        var color = isLoss ? '#f87171' : '#4ade80';
-        return '<div class="trade-list-item">' +
-                 '<span>' + t.date + ' &middot; ' + t.asset + '</span>' +
-                 '<span style="color:' + color + '; font-weight:700;">' + formatted + '</span>' +
-               '</div>';
-      }).join('') || '<div class="settings-row-desc">No trades logged yet.</div>';
-    }
-
-    function clearAllTrades() {
-      if (confirm('Remove all logged trades? This cannot be undone.')) {
-        trades = [];
-        renderCalendar();
-        renderAnalytics();
-      }
-    }
-
-    // ---------- MODAL ----------
-    function openModal(dateStr) {
-      document.getElementById('tradeDate').value = dateStr || toDateKey(currentDate.getFullYear(), currentDate.getMonth(), new Date().getDate());
-      document.getElementById('tradeAmount').value = '';
-      var defaultAsset = document.getElementById('defaultAssetInput');
-      document.getElementById('tradeAsset').value = defaultAsset ? defaultAsset.value : 'MNQ';
-      setTradeType('profit');
-      document.getElementById('tradeModal').classList.add('open');
-    }
-
-    function closeModal() {
-      document.getElementById('tradeModal').classList.remove('open');
-    }
-
-    function toDateKey(year, month, day) {
-      var monthStr = String(month + 1).padStart(2, '0');
-      var dayStr = String(day).padStart(2, '0');
-      return year + '-' + monthStr + '-' + dayStr;
-    }
-
-    // ---------- PROFIT/LOSS TOGGLE ----------
-    // Fixed: the toggle buttons are now the single source of truth for sign.
-    // Typing an amount no longer silently flips the toggle back.
-    function setTradeType(type) {
-      selectedTradeType = type;
-      var btnProfit = document.getElementById('btnProfit');
-      var btnLoss = document.getElementById('btnLoss');
-
-      if (type === 'profit') {
-        btnProfit.className = 'type-btn active-profit';
-        btnLoss.className = 'type-btn';
+  function renderGrid() {
+    document.getElementById("monthlabel").textContent = `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
+    const year = cursor.getFullYear(), month = cursor.getMonth();
+    const first = new Date(year, month, 1);
+    const startOffset = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const cells = [];
+    for (let i=0;i<startOffset;i++) cells.push(null);
+    for (let d=1; d<=daysInMonth; d++) cells.push(new Date(year, month, d));
+    while (cells.length % 7 !== 0) cells.push(null);
+    const todayKey = dayKey(new Date());
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
+    cells.forEach(d => {
+      const cell = document.createElement(d ? "button" : "div");
+      if (!d) { cell.className = "cell empty"; grid.appendChild(cell); return; }
+      const key = dayKey(d);
+      const entry = entries[key];
+      const hidden = entry && selectedAssetFilter && entry.asset !== selectedAssetFilter;
+      const hasPnl = entry && !hidden && entry.pnl !== null && entry.pnl !== undefined;
+      cell.className = "cell " + (hasPnl ? (entry.pnl >= 0 ? "win" : "loss") : "");
+      cell.type = "button";
+      const isToday = key === todayKey;
+      let html = "";
+      if (entry && !hidden && entry.photo) html += `<img class="cellphoto" src="${entry.photo}" alt="" />`;
+      html += `<span class="daynum ${isToday?'today':''}">${pad2(d.getDate())}${isToday?'<span class="todaydot"></span>':''}</span>`;
+      if (hasPnl) {
+        html += `<div><div class="pnlfig ${entry.pnl>=0?'pos':'neg'}">${fmtMoney(entry.pnl)}</div><div class="tradecount">${entry.trades||0} trade${entry.trades===1?"":"s"}</div>${entry.asset?`<span class="assettag">${entry.asset}</span>`:""}</div>`;
       } else {
-        btnProfit.className = 'type-btn';
-        btnLoss.className = 'type-btn active-loss';
+        html += `<div></div>`;
       }
+      if (entry && !hidden && entry.note) html += `<span class="notedot"></span>`;
+      cell.innerHTML = html;
+      cell.onclick = () => openDay(d, key);
+      grid.appendChild(cell);
+    });
+  }
+
+  function renderAllTime() {
+    const total = Object.values(entries).reduce((s,e)=>s+(e.pnl||0),0);
+    const el = document.getElementById("settings-alltime");
+    el.textContent = fmtMoney(total);
+    el.style.color = total >= 0 ? "var(--green)" : "var(--red)";
+  }
+
+  function renderAll() { renderGrid(); renderStats(); renderSummary(); renderAllTime(); }
+
+  function renderPhotoArea() {
+    const area = document.getElementById("photoArea");
+    if (activePhoto) {
+      area.innerHTML = `<div class="photo-preview-wrap"><img class="photo-preview" src="${activePhoto}" id="photoPreviewImg" /><button class="photo-remove" id="photoRemoveBtn" type="button">✕</button></div><span class="photo-hint">Tap to view · tap ✕ to remove</span>`;
+      document.getElementById("photoPreviewImg").onclick = () => openLightbox(activePhoto);
+      document.getElementById("photoRemoveBtn").onclick = (e) => { e.stopPropagation(); activePhoto = null; renderPhotoArea(); };
+    } else {
+      area.innerHTML = `<button class="photo-btn" id="photoAddBtn" type="button"><span class="plus">＋</span><span>Add photo</span></button><span class="photo-hint">Attach a chart or trade screenshot</span>`;
+      document.getElementById("photoAddBtn").onclick = () => document.getElementById("photoInput").click();
     }
+  }
 
-    // ---------- CALENDAR ----------
-    function renderCalendar() {
-      var year = currentDate.getFullYear();
-      var month = currentDate.getMonth();
+  document.getElementById("photoInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 900;
+        let { width, height } = img;
+        if (width > height && width > maxDim) { height = height * (maxDim/width); width = maxDim; }
+        else if (height > maxDim) { width = width * (maxDim/height); height = maxDim; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        activePhoto = canvas.toDataURL("image/jpeg", 0.65);
+        renderPhotoArea();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  });
 
-      var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      document.getElementById('monthDisplay').innerText = monthNames[month] + " " + year;
+  function openLightbox(src) { document.getElementById("lightboxImg").src = src; document.getElementById("lightbox").classList.add("open"); }
+  document.getElementById("lightboxClose").onclick = () => document.getElementById("lightbox").classList.remove("open");
+  document.getElementById("lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") e.currentTarget.classList.remove("open"); });
 
-      var grid = document.getElementById('calendarGrid');
-      grid.innerHTML = '';
+  function openDay(d, key) {
+    activeKey = key;
+    const entry = entries[key] || {};
+    activePhoto = entry.photo || null;
+    document.getElementById("modaldate").textContent = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    document.getElementById("f-asset").value = entry.asset || "";
+    document.getElementById("f-pnl").value = entry.pnl ?? "";
+    document.getElementById("f-trades").value = entry.trades ?? "";
+    document.getElementById("f-note").value = entry.note ?? "";
+    renderPhotoArea();
+    document.getElementById("overlay").classList.add("open");
+    setTimeout(() => document.getElementById("f-pnl").focus(), 200);
+  }
+  function closeModal() { document.getElementById("overlay").classList.remove("open"); activeKey = null; activePhoto = null; }
 
-      var days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-      days.forEach(function(day) {
-        grid.innerHTML += '<div class="day-header">' + day + '</div>';
-      });
+  document.getElementById("closemodal").onclick = closeModal;
+  document.getElementById("overlay").addEventListener("click", e => { if (e.target.id === "overlay") closeModal(); });
 
-      var firstDayOfMonth = new Date(year, month, 1);
-      var startingDay = firstDayOfMonth.getDay() - 1;
-      if (startingDay === -1) startingDay = 6;
+  document.getElementById("savebtn").onclick = () => {
+    if (!activeKey) return;
+    const asset = document.getElementById("f-asset").value;
+    const pnlRaw = document.getElementById("f-pnl").value;
+    const tradesRaw = document.getElementById("f-trades").value;
+    const note = document.getElementById("f-note").value.trim();
+    const pnl = pnlRaw === "" ? null : parseFloat(pnlRaw);
+    const trades = tradesRaw === "" ? 0 : parseInt(tradesRaw, 10);
+    if (pnl === null && !note && !activePhoto && !asset) saveEntryToCloud(activeKey, null);
+    else saveEntryToCloud(activeKey, { asset: asset || null, pnl, trades: trades || 0, note, photo: activePhoto || null });
+    closeModal();
+  };
+  document.getElementById("clearbtn").onclick = () => { if (!activeKey) return; saveEntryToCloud(activeKey, null); closeModal(); };
 
-      var totalDays = new Date(year, month + 1, 0).getDate();
+  document.getElementById("prevmonth").onclick = () => { cursor.setMonth(cursor.getMonth()-1); renderAll(); };
+  document.getElementById("nextmonth").onclick = () => { cursor.setMonth(cursor.getMonth()+1); renderAll(); };
 
-      for (var i = 0; i < startingDay; i++) {
-        grid.innerHTML += '<div class="day-cell" style="opacity:0.2;"></div>';
-      }
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  if (isIOS && !isStandalone) document.getElementById("installtip").classList.add("show");
 
-      for (var day = 1; day <= totalDays; day++) {
-        var dateKey = toDateKey(year, month, day);
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("service-worker.js").catch(() => {}); });
+  }
 
-        var dayTrade = trades.find(function(t) { return t.date === dateKey; });
-
-        var tradeHTML = '';
-        if (dayTrade) {
-          var isLoss = dayTrade.amount < 0;
-          var formattedAmount = (dayTrade.amount >= 0 ? '+' : '-') + '$' + Math.abs(dayTrade.amount).toFixed(2);
-          var cardClass = isLoss ? 'loss' : 'profit';
-
-          tradeHTML =
-            '<div class="trade-card ' + cardClass + '">' +
-              '<span class="pnl-amount">' + formattedAmount + '</span>' +
-              '<div class="trade-meta">' +
-                '<span>' + (dayTrade.count || 1) + ' trade' + ((dayTrade.count > 1) ? 's' : '') + '</span>' +
-                '<span class="asset-badge">' + dayTrade.asset + '</span>' +
-              '</div>' +
-            '</div>';
-        }
-
-        grid.innerHTML +=
-          '<div class="day-cell" onclick="openModal(\'' + dateKey + '\')">' +
-            '<span class="day-number">' + day + '</span>' +
-            tradeHTML +
-          '</div>';
-      }
-    }
-
-    function changeMonth(delta) {
-      currentDate.setMonth(currentDate.getMonth() + delta);
-      renderCalendar();
-    }
-
-    function saveTrade() {
-      var date = document.getElementById('tradeDate').value;
-      var amountInput = document.getElementById('tradeAmount').value;
-      var amount = parseFloat(amountInput);
-      var asset = document.getElementById('tradeAsset').value || 'MNQ';
-
-      if (!date || isNaN(amount)) {
-        alert('Please enter a valid date and amount.');
-        return;
-      }
-
-      // Sign is decided purely by which toggle button is active.
-      amount = Math.abs(amount);
-      if (selectedTradeType === 'loss') {
-        amount = -amount;
-      }
-
-      var existing = trades.find(function(t) { return t.date === date; });
-      if (existing) {
-        existing.amount = amount;
-        existing.asset = asset;
-        existing.count = (existing.count || 1) + 1;
-      } else {
-        trades.push({ date: date, amount: amount, asset: asset, count: 1 });
-      }
-
-      closeModal();
-      renderCalendar();
-    }
-
-    renderCalendar();
-  </script>
+  window.addEventListener("online", () => setSyncStatus("synced"));
+  window.addEventListener("offline", () => setSyncStatus("offline"));
+})();
+</script>
 </body>
 </html>
-```

@@ -1,4 +1,4 @@
-const CACHE_NAME = "pnl-ledger-v5";
+const CACHE_NAME = "pnl-ledger-v7";
 const ASSETS = [
   "./manifest.json",
   "./icon-192.png",
@@ -25,10 +25,10 @@ self.addEventListener("fetch", (event) => {
   const isHTML = event.request.mode === "navigate" || event.request.url.endsWith("index.html") || event.request.url.endsWith("/");
 
   if (isHTML) {
-    // Network-first for the app shell so updates always show up immediately.
-    // Falls back to cache only if there's truly no connection.
+    // Network-first, and "no-store" so the browser's own HTTP cache can't
+    // silently hand back a stale copy without ever hitting the network.
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: "no-store" })
         .then((res) => {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));

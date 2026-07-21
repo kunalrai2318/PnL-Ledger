@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>KUN | P&L Ledger</title>
-
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#000000" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -12,365 +11,331 @@
 <meta name="apple-mobile-web-app-title" content="KUN Ledger" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="icon" href="icon-192.png" />
-
-<!-- Firebase (free tier) — provides the account login + private cloud sync -->
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
-
 <style>
-  :root {
-    --bg: #000000;
-    --card: #1C1C1E;
-    --cell: #17171A;
-    --separator: rgba(255,255,255,0.09);
-    --text: #F5F5F7;
-    --text-secondary: rgba(235,235,245,0.60);
-    --text-tertiary: rgba(235,235,245,0.34);
-    --green: #32D74B;
-    --green-dim: rgba(50,215,75,0.14);
-    --red: #FF453A;
-    --red-dim: rgba(255,69,58,0.14);
-    --amber: #FF9F0A;
-    --blue: #0A84FF;
-    --radius-lg: 20px;
-    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0; padding: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font); -webkit-font-smoothing: antialiased;
-  }
-  body { min-height: 100vh; min-height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
-  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; -webkit-user-select: none; user-select: none; }
-  button:active { opacity: 0.55; }
-  input, textarea { font: inherit; color: inherit; }
-
-  .main { max-width: 720px; margin: 0 auto; padding: 8px 12px 96px; width: 100%; }
-  @media (min-width: 860px) { .main { max-width: 1080px; padding: 24px 32px 60px; } }
-  @media (orientation: landscape) and (max-height: 500px) { .main { max-width: 900px; padding: 6px 16px 84px; } }
-
-  .header { padding: 10px 4px 10px; }
-  .kicker-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
-  .brandrow { display: flex; align-items: center; gap: 8px; }
-  .brandmark { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
-  .kicker { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
-  .synctag { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
-  .synctag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-  .synctag.offline .dot { background: var(--amber); }
-  h1 { font-size: 22px; font-weight: 780; letter-spacing: -0.2px; margin: 2px 0 0; }
-
-  /* ---- Top summary cards (P&L + Goal) ---- */
-  .summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
-  @media (orientation: landscape) and (max-height: 500px) {
-    .header { padding: 4px 4px 4px; }
-    .summary-row { margin: 6px 0; }
-    .summary-card { padding: 8px 12px; }
-    .summary-value { font-size: 17px; margin-top: 1px; }
-    .monthnav { margin: 4px 0 6px; }
-    .chiprow { margin: 2px 0 6px; }
-  }
-  .summary-card { background: var(--card); border-radius: 16px; padding: 12px 14px; position: relative; }
-  .summary-label { font-size: 11px; color: var(--text-tertiary); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
-  .summary-value { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; margin-top: 3px; }
-  .summary-editbtn { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-secondary); }
-  .summary-goalbar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 10px; }
-  .summary-goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
-  .summary-goalnums { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-tertiary); margin-top: 5px; font-variant-numeric: tabular-nums; font-weight: 600; }
-  .summary-empty { font-size: 12px; color: var(--blue); font-weight: 650; margin-top: 8px; }
-  .summary-goalinput-row { display: flex; gap: 6px; margin-top: 8px; }
-  .summary-goalinput { flex: 1; min-width: 0; background: rgba(255,255,255,0.07); border: none; border-radius: 8px; padding: 7px 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
-  .summary-goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 8px; padding: 7px 10px; font-size: 12px; }
-
-  /* ---- Filter chips row (asset) ---- */
-  .chiprow { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
-  .chip { display: flex; align-items: center; gap: 5px; background: var(--card); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-  .chip b { color: var(--text); font-weight: 650; }
-  .chip .caret { font-size: 10px; color: var(--text-tertiary); }
-
-  .monthnav { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 4px 0 10px; background: var(--card); border-radius: 12px; padding: 4px; }
-  .navbtn { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
-  .navbtn:active { background: rgba(255,255,255,0.08); opacity: 1; }
-  .monthlabel { flex: 1; text-align: center; font-size: 16px; font-weight: 650; }
-
-  .installtip { display: none; }
-  .installtip.show { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
-  .installtip b { color: var(--text); }
-  .installtip .icon { font-size: 20px; flex-shrink: 0; }
-
-  .cal-card { background: var(--card); border-radius: var(--radius-lg); padding: 12px 8px 14px; margin-bottom: 14px; }
-  .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
-  .dow div { text-align: center; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-tertiary); padding-bottom: 4px; }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-  .cell { aspect-ratio: 0.85 / 1; min-height: 110px; background: var(--cell); border-radius: 13px; text-align: left; padding: 9px 8px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
-  @media (min-width: 480px) { .cell { min-height: 126px; padding: 10px 9px; } }
-  @media (min-width: 860px) { .cell { min-height: 150px; aspect-ratio: 1 / 0.9; } }
-  /* Landscape phones: less vertical room, so widen cells and shrink height instead of shrinking overall size */
-  @media (orientation: landscape) and (max-height: 500px) {
-    .cell { aspect-ratio: 1.3 / 1; min-height: 72px; padding: 6px 8px; }
-    .grid { gap: 4px; }
-    .cal-card { padding: 8px 6px 10px; }
-    .pnlfig { font-size: 13px; }
-    .daynum { font-size: 11px; }
-  }
-  .cell.empty { background: transparent; }
-  .cell:not(.empty):active { transform: scale(0.94); opacity: 1; }
-  .cell.win { background: var(--green-dim); }
-  .cell.loss { background: var(--red-dim); }
-  .daynum { font-size: 13px; font-weight: 650; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
-  .daynum.today { color: var(--blue); }
-  .todaydot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--blue); margin-left: 3px; vertical-align: middle; }
-  .pnlfig { font-size: 15px; font-weight: 700; line-height: 1.18; font-variant-numeric: tabular-nums; }
-  @media (min-width: 480px) { .pnlfig { font-size: 16px; } }
-  .pnlfig.pos { color: var(--green); }
-  .pnlfig.neg { color: var(--red); }
-  .tradecount { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; font-weight: 550; }
-  .assettag { font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.08); border-radius: 5px; padding: 1px 5px; display: inline-block; margin-top: 3px; letter-spacing: 0.02em; }
-  .cellphoto { position: absolute; inset: 0; object-fit: cover; opacity: 0.28; }
-  .notedot { position: absolute; top: 6px; right: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
-
-  /* ---- Bottom tab bar ---- */
-  .bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: rgba(20,20,22,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--separator); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
-  .navitem { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; color: var(--text-tertiary); font-size: 11px; font-weight: 600; }
-  .navitem .navicon { font-size: 20px; line-height: 1; }
-  .navitem.active { color: var(--blue); }
-  .tabpanel { display: none; }
-  .tabpanel.active { display: block; }
-  @media (min-width: 860px) { .bottomnav { display: none; } .main { padding-bottom: 60px; } .tabpanel { display: block !important; } }
-
-  .panel { background: var(--card); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
-  .paneltitle { font-size: 13px; font-weight: 650; color: var(--text-tertiary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.02em; }
-  .statrow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--separator); font-size: 15px; }
-  .statrow:last-child { border-bottom: none; padding-bottom: 2px; }
-  .statrow:first-child { padding-top: 2px; }
-  .statrow .label { color: var(--text-secondary); }
-  .statrow .value { font-weight: 650; font-variant-numeric: tabular-nums; }
-
-  .goalbar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
-  .goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
-  .goalnums { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-variant-numeric: tabular-nums; font-weight: 600; }
-  .goalset { font-size: 14px; color: var(--blue); font-weight: 600; }
-  .goalinput-row { display: flex; gap: 8px; }
-  .goalinput { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; font-variant-numeric: tabular-nums; }
-  .goalinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
-  .goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 16px; font-size: 14px; }
-
-  .ddmeta { font-size: 13px; color: var(--text-secondary); margin-top: 8px; font-weight: 500; }
-  .ddempty { font-size: 13px; color: var(--text-tertiary); line-height: 1.5; }
-
-  @media (min-width: 860px) { .layout2 { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; } }
-
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; z-index: 50; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
-  .overlay.open { opacity: 1; pointer-events: auto; }
-  @media (min-width: 640px) { .overlay { align-items: center; } }
-  .sheet { background: #1C1C1E; width: 100%; max-width: 460px; border-radius: 20px 20px 0 0; padding: 10px 20px calc(24px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .3s cubic-bezier(.32,.72,0,1); max-height: 88vh; overflow-y: auto; }
-  .overlay.open .sheet { transform: translateY(0); }
-  @media (min-width: 640px) { .sheet { border-radius: 20px; padding: 20px 22px 22px; transform: translateY(12px) scale(0.97); } .overlay.open .sheet { transform: translateY(0) scale(1); } }
-  .grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.22); margin: 4px auto 14px; }
-  @media (min-width: 640px) { .grabber { display: none; } }
-  .modalhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-  .modaldate { font-size: 17px; font-weight: 700; }
-  .closebtn { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--text-secondary); }
-  .flabel { display: block; font-size: 12px; font-weight: 650; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 6px; }
-  .finput { width: 100%; background: rgba(255,255,255,0.06); border: none; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 17px; font-variant-numeric: tabular-nums; }
-  .finput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
-  #f-trades { font-size: 15px; }
-  textarea.finput { font-size: 15px; resize: none; font-variant-numeric: normal; }
-  .photo-row { margin-bottom: 16px; }
-  .photo-area { display: flex; align-items: center; gap: 10px; }
-  .photo-btn { width: 74px; height: 74px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.22); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--text-secondary); font-size: 10.5px; font-weight: 600; flex-shrink: 0; }
-  .photo-btn .plus { font-size: 20px; line-height: 1; color: var(--blue); }
-  .photo-preview-wrap { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
-  .photo-preview { width: 74px; height: 74px; border-radius: 14px; object-fit: cover; display: block; }
-  .photo-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #2C2C2E; border: 2px solid #1C1C1E; display: flex; align-items: center; justify-content: center; font-size: 12px; }
-  .photo-hint { font-size: 12px; color: var(--text-tertiary); }
-  .modalbtns { display: flex; gap: 10px; margin-top: 4px; }
-  .btn-save { flex: 1; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; }
-  .btn-clear { padding: 14px 18px; background: rgba(255,69,58,0.12); border-radius: 13px; font-size: 15px; font-weight: 600; color: var(--red); }
-
-  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
-  .lightbox.open { display: flex; }
-  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 14px; }
-  .lightbox-close { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-
-  select.finput { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) center, calc(100% - 13px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
-
-  .settingsrow { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--separator); }
-  .settingsrow:last-child { border-bottom: none; }
-  .settingsrow .label { font-size: 15px; }
-  .settingsrow .sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
-  .settingsval { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
-  .signoutbtn2 { color: var(--red); font-weight: 650; font-size: 15px; }
-  .assetlist-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
-  .assetlist-row:last-child { border-bottom: none; }
-  .assetremove { color: var(--red); font-size: 13px; font-weight: 600; }
-  .addasset-row { display: flex; gap: 8px; margin-top: 12px; }
-  .addasset-input { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; }
-  .addasset-btn { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
-
-  /* ---- Auth screen ---- */
-  #authscreen { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
-  #authscreen.hidden { display: none; }
-  .authcard { width: 100%; max-width: 360px; }
-  .authlogo { font-size: 40px; text-align: center; margin-bottom: 6px; }
-  .authtitle { font-size: 26px; font-weight: 750; text-align: center; margin-bottom: 4px; letter-spacing: -0.3px; }
-  .authsub { font-size: 14px; color: var(--text-secondary); text-align: center; margin-bottom: 28px; line-height: 1.4; }
-  .authinput { width: 100%; background: var(--card); border: none; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; font-size: 16px; }
-  .authinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
-  .authbtn { width: 100%; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; margin-top: 8px; }
-  .authbtn:disabled { opacity: 0.5; }
-  .authtoggle { text-align: center; margin-top: 18px; font-size: 14px; color: var(--text-secondary); }
-  .authtoggle button { color: var(--blue); font-weight: 600; }
-  .autherror { color: var(--red); font-size: 13px; text-align: center; margin-top: 10px; min-height: 16px; }
-  .authloading { display: flex; align-items: center; justify-content: center; height: 100vh; color: var(--text-tertiary); font-size: 14px; }
-  .configwarn { background: var(--card); border: 1px solid var(--amber); border-radius: 14px; padding: 16px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); max-width: 420px; }
-  .configwarn b { color: var(--amber); }
-  .configwarn code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+:root {
+  --bg: #000000;
+  --card: #1C1C1E;
+  --cell: #17171A;
+  --separator: rgba(255,255,255,0.09);
+  --text: #F5F5F7;
+  --text-secondary: rgba(235,235,245,0.60);
+  --text-tertiary: rgba(235,235,245,0.34);
+  --green: #32D74B;
+  --green-dim: rgba(50,215,75,0.14);
+  --red: #FF453A;
+  --red-dim: rgba(255,69,58,0.14);
+  --amber: #FF9F0A;
+  --blue: #0A84FF;
+  --radius-lg: 20px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font); -webkit-font-smoothing: antialiased;
+}
+body { min-height: 100vh; min-height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; -webkit-user-select: none; user-select: none; }
+button:active { opacity: 0.55; }
+input, textarea { font: inherit; color: inherit; }
+.main { max-width: 720px; margin: 0 auto; padding: 8px 12px 96px; width: 100%; }
+@media (min-width: 860px) { .main { max-width: 1080px; padding: 24px 32px 60px; } }
+@media (orientation: landscape) and (max-height: 500px) { .main { max-width: 900px; padding: 6px 16px 84px; } }
+.header { padding: 10px 4px 10px; }
+.kicker-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.brandrow { display: flex; align-items: center; gap: 8px; }
+.brandmark { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
+.kicker { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.synctag { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
+.synctag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.synctag.offline .dot { background: var(--amber); }
+h1 { font-size: 22px; font-weight: 780; letter-spacing: -0.2px; margin: 2px 0 0; }
+.summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .header { padding: 4px 4px 4px; }
+  .summary-row { margin: 6px 0; }
+  .summary-card { padding: 8px 12px; }
+  .summary-value { font-size: 17px; margin-top: 1px; }
+  .monthnav { margin: 4px 0 6px; }
+  .chiprow { margin: 2px 0 6px; }
+}
+.summary-card { background: var(--card); border-radius: 16px; padding: 12px 14px; position: relative; }
+.summary-label { font-size: 11px; color: var(--text-tertiary); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+.summary-value { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; margin-top: 3px; }
+.summary-editbtn { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-secondary); }
+.summary-goalbar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 10px; }
+.summary-goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+.summary-goalnums { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-tertiary); margin-top: 5px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.summary-empty { font-size: 12px; color: var(--blue); font-weight: 650; margin-top: 8px; }
+.summary-goalinput-row { display: flex; gap: 6px; margin-top: 8px; }
+.summary-goalinput { flex: 1; min-width: 0; background: rgba(255,255,255,0.07); border: none; border-radius: 8px; padding: 7px 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.summary-goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 8px; padding: 7px 10px; font-size: 12px; }
+.chiprow { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.chip { display: flex; align-items: center; gap: 5px; background: var(--card); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.chip b { color: var(--text); font-weight: 650; }
+.chip .caret { font-size: 10px; color: var(--text-tertiary); }
+.monthnav { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 4px 0 10px; background: var(--card); border-radius: 12px; padding: 4px; }
+.navbtn { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+.navbtn:active { background: rgba(255,255,255,0.08); opacity: 1; }
+.monthlabel { flex: 1; text-align: center; font-size: 16px; font-weight: 650; }
+.installtip { display: none; }
+.installtip.show { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+.installtip b { color: var(--text); }
+.installtip .icon { font-size: 20px; flex-shrink: 0; }
+.cal-card { background: var(--card); border-radius: var(--radius-lg); padding: 12px 8px 14px; margin-bottom: 14px; }
+.dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+.dow div { text-align: center; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-tertiary); padding-bottom: 4px; }
+.grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 110px; gap: 5px; }
+.cell { background: var(--cell); border-radius: 13px; text-align: left; padding: 9px 8px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; width: 100%; height: 100%; }
+@media (min-width: 480px) { .grid { grid-auto-rows: 126px; } .cell { padding: 10px 9px; } }
+@media (min-width: 860px) { .grid { grid-auto-rows: 150px; } }
+@media (orientation: landscape) and (max-height: 500px) {
+  .grid { grid-auto-rows: 72px; gap: 4px; }
+  .cell { padding: 6px 8px; }
+  .cal-card { padding: 8px 6px 10px; }
+  .pnlfig { font-size: 13px; }
+  .daynum { font-size: 11px; }
+}
+.cell.empty { background: transparent; }
+.cell:not(.empty):active { transform: scale(0.94); opacity: 1; }
+.cell.win { background: var(--green-dim); }
+.cell.loss { background: var(--red-dim); }
+.daynum { font-size: 13px; font-weight: 650; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.daynum.today { color: var(--blue); }
+.todaydot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--blue); margin-left: 3px; vertical-align: middle; }
+.pnlfig { font-size: 15px; font-weight: 700; line-height: 1.18; font-variant-numeric: tabular-nums; }
+@media (min-width: 480px) { .pnlfig { font-size: 16px; } }
+.pnlfig.pos { color: var(--green); }
+.pnlfig.neg { color: var(--red); }
+.tradecount { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; font-weight: 550; }
+.assettag { font-size: 9.5px; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.08); border-radius: 5px; padding: 1px 5px; display: inline-block; margin-top: 3px; letter-spacing: 0.02em; }
+.cellphoto { position: absolute; inset: 0; object-fit: cover; opacity: 0.28; }
+.notedot { position: absolute; top: 6px; right: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+.bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: rgba(20,20,22,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--separator); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+.navitem { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; color: var(--text-tertiary); font-size: 11px; font-weight: 600; }
+.navitem .navicon { font-size: 20px; line-height: 1; }
+.navitem.active { color: var(--blue); }
+.tabpanel { display: none; }
+.tabpanel.active { display: block; }
+@media (min-width: 860px) { .bottomnav { display: none; } .main { padding-bottom: 60px; } .tabpanel { display: block !important; } }
+.panel { background: var(--card); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
+.paneltitle { font-size: 13px; font-weight: 650; color: var(--text-tertiary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.02em; }
+.statrow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--separator); font-size: 15px; }
+.statrow:last-child { border-bottom: none; padding-bottom: 2px; }
+.statrow:first-child { padding-top: 2px; }
+.statrow .label { color: var(--text-secondary); }
+.statrow .value { font-weight: 650; font-variant-numeric: tabular-nums; }
+.goalbar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.goalbar > div { height: 100%; background: linear-gradient(90deg, var(--amber), #FFD60A); border-radius: 999px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+.goalnums { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.goalset { font-size: 14px; color: var(--blue); font-weight: 600; }
+.goalinput-row { display: flex; gap: 8px; }
+.goalinput { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; font-variant-numeric: tabular-nums; }
+.goalinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+.goalsave { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 16px; font-size: 14px; }
+.ddmeta { font-size: 13px; color: var(--text-secondary); margin-top: 8px; font-weight: 500; }
+.ddempty { font-size: 13px; color: var(--text-tertiary); line-height: 1.5; }
+@media (min-width: 860px) { .layout2 { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; } }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; z-index: 50; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+.overlay.open { opacity: 1; pointer-events: auto; }
+@media (min-width: 640px) { .overlay { align-items: center; } }
+.sheet { background: #1C1C1E; width: 100%; max-width: 460px; border-radius: 20px 20px 0 0; padding: 10px 20px calc(24px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .3s cubic-bezier(.32,.72,0,1); max-height: 88vh; overflow-y: auto; }
+.overlay.open .sheet { transform: translateY(0); }
+@media (min-width: 640px) { .sheet { border-radius: 20px; padding: 20px 22px 22px; transform: translateY(12px) scale(0.97); } .overlay.open .sheet { transform: translateY(0) scale(1); } }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.22); margin: 4px auto 14px; }
+@media (min-width: 640px) { .grabber { display: none; } }
+.modalhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.modaldate { font-size: 17px; font-weight: 700; }
+.closebtn { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--text-secondary); }
+.flabel { display: block; font-size: 12px; font-weight: 650; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 6px; }
+.finput { width: 100%; background: rgba(255,255,255,0.06); border: none; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.finput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+#f-trades { font-size: 15px; }
+textarea.finput { font-size: 15px; resize: none; font-variant-numeric: normal; }
+.photo-row { margin-bottom: 16px; }
+.photo-area { display: flex; align-items: center; gap: 10px; }
+.photo-btn { width: 74px; height: 74px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.22); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--text-secondary); font-size: 10.5px; font-weight: 600; flex-shrink: 0; }
+.photo-btn .plus { font-size: 20px; line-height: 1; color: var(--blue); }
+.photo-preview-wrap { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
+.photo-preview { width: 74px; height: 74px; border-radius: 14px; object-fit: cover; display: block; }
+.photo-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #2C2C2E; border: 2px solid #1C1C1E; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.photo-hint { font-size: 12px; color: var(--text-tertiary); }
+.modalbtns { display: flex; gap: 10px; margin-top: 4px; }
+.btn-save { flex: 1; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; }
+.btn-clear { padding: 14px 18px; background: rgba(255,69,58,0.12); border-radius: 13px; font-size: 15px; font-weight: 600; color: var(--red); }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 14px; }
+.lightbox-close { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+select.finput { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) center, calc(100% - 13px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+.settingsrow { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--separator); }
+.settingsrow:last-child { border-bottom: none; }
+.settingsrow .label { font-size: 15px; }
+.settingsrow .sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.settingsval { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.signoutbtn2 { color: var(--red); font-weight: 650; font-size: 15px; }
+.assetlist-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--separator); }
+.assetlist-row:last-child { border-bottom: none; }
+.assetremove { color: var(--red); font-size: 13px; font-weight: 600; }
+.addasset-row { display: flex; gap: 8px; margin-top: 12px; }
+.addasset-input { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; padding: 10px 12px; }
+.addasset-btn { background: var(--blue); color: #fff; font-weight: 650; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+#authscreen { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+#authscreen.hidden { display: none; }
+.authcard { width: 100%; max-width: 360px; }
+.authlogo { font-size: 40px; text-align: center; margin-bottom: 6px; }
+.authtitle { font-size: 26px; font-weight: 750; text-align: center; margin-bottom: 4px; letter-spacing: -0.3px; }
+.authsub { font-size: 14px; color: var(--text-secondary); text-align: center; margin-bottom: 28px; line-height: 1.4; }
+.authinput { width: 100%; background: var(--card); border: none; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; font-size: 16px; }
+.authinput:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+.authbtn { width: 100%; background: var(--blue); color: #fff; font-weight: 650; border-radius: 13px; padding: 14px; font-size: 16px; margin-top: 8px; }
+.authbtn:disabled { opacity: 0.5; }
+.authtoggle { text-align: center; margin-top: 18px; font-size: 14px; color: var(--text-secondary); }
+.authtoggle button { color: var(--blue); font-weight: 600; }
+.autherror { color: var(--red); font-size: 13px; text-align: center; margin-top: 10px; min-height: 16px; }
+.authloading { display: flex; align-items: center; justify-content: center; height: 100vh; color: var(--text-tertiary); font-size: 14px; }
+.configwarn { background: var(--card); border: 1px solid var(--amber); border-radius: 14px; padding: 16px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); max-width: 420px; }
+.configwarn b { color: var(--amber); }
+.configwarn code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 </style>
 </head>
 <body>
+<div id="authloading" class="authloading">Loading…</div>
+<div id="authscreen" class="hidden">
+  <div class="authcard">
+    <img src="icon-192.png" alt="" style="width:72px; height:72px; border-radius:18px; display:block; margin:0 auto 14px;" />
+    <div class="authtitle">KUN</div>
+    <div class="authsub" id="authsub">Log in to sync your trading journal across every device.</div>
+    <input class="authinput" id="auth-email" type="email" placeholder="Email" autocomplete="email" />
+    <input class="authinput" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
+    <button class="authbtn" id="auth-submit">Log In</button>
+    <div class="autherror" id="auth-error"></div>
+    <div class="authtoggle" id="authtoggle">New here? <button id="authtoggle-btn">Create an account</button></div>
+  </div>
+</div>
 
-  <div id="authloading" class="authloading">Loading…</div>
-
-  <div id="authscreen" class="hidden">
-    <div class="authcard">
-      <img src="icon-192.png" alt="" style="width:72px; height:72px; border-radius:18px; display:block; margin:0 auto 14px;" />
-      <div class="authtitle">KUN</div>
-      <div class="authsub" id="authsub">Log in to sync your trading journal across every device.</div>
-      <input class="authinput" id="auth-email" type="email" placeholder="Email" autocomplete="email" />
-      <input class="authinput" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
-      <button class="authbtn" id="auth-submit">Log In</button>
-      <div class="autherror" id="auth-error"></div>
-      <div class="authtoggle" id="authtoggle">New here? <button id="authtoggle-btn">Create an account</button></div>
+<div id="app" style="display:none">
+<div class="main">
+  <div class="header">
+    <div class="kicker-row">
+      <div class="brandrow">
+        <img src="icon-192.png" class="brandmark" alt="" />
+        <div class="kicker">KUN · Trading Journal</div>
+      </div>
+      <div class="synctag" id="synctag"><span class="dot"></span><span id="synctext">Synced</span></div>
     </div>
   </div>
 
-  <div id="app" style="display:none">
-    <div class="main">
-      <div class="header">
-        <div class="kicker-row">
-          <div class="brandrow">
-            <img src="icon-192.png" class="brandmark" alt="" />
-            <div class="kicker">KUN · Trading Journal</div>
-          </div>
-          <div class="synctag" id="synctag"><span class="dot"></span><span id="synctext">Synced</span></div>
-        </div>
+  <div class="installtip" id="installtip">
+    <span class="icon">📲</span>
+    <span><b>Install this app:</b> tap the Share icon in Safari, then "Add to Home Screen."</span>
+  </div>
+
+  <div class="tabpanel active" id="tab-calendar">
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="summary-label">Total P&amp;L</div>
+        <div class="summary-value" id="summary-pnl">$0.00</div>
       </div>
-
-      <div class="installtip" id="installtip">
-        <span class="icon">📲</span>
-        <span><b>Install this app:</b> tap the Share icon in Safari, then "Add to Home Screen."</span>
-      </div>
-
-      <!-- ============ TAB: CALENDAR ============ -->
-      <div class="tabpanel active" id="tab-calendar">
-        <div class="summary-row">
-          <div class="summary-card">
-            <div class="summary-label">Total P&amp;L</div>
-            <div class="summary-value" id="summary-pnl">$0.00</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-label">Monthly Goal</div>
-            <button class="summary-editbtn" id="summary-goal-edit">✎</button>
-            <div id="summary-goal-body"></div>
-          </div>
-        </div>
-
-        <div class="chiprow">
-          <div class="chip" style="position:relative; padding-right:34px;">
-            <span>Asset:</span> <b id="assetFilterLabel">All</b> <span class="caret">▾</span>
-            <select id="assetFilterSelect" style="position:absolute; inset:0; opacity:0; width:100%; height:100%;">
-              <option value="">All</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="monthnav">
-          <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
-          <div class="monthlabel" id="monthlabel"></div>
-          <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
-        </div>
-
-        <div class="cal-card">
-          <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
-          <div class="grid" id="grid"></div>
-        </div>
-      </div>
-
-      <!-- ============ TAB: ANALYTICS ============ -->
-      <div class="tabpanel" id="tab-analytics">
-        <div class="panel"><div class="paneltitle">This Month</div><div id="stats"></div></div>
-        <div class="panel"><div class="paneltitle">Drawdown</div><div id="drawdown"></div></div>
-      </div>
-
-      <!-- ============ TAB: SETTINGS ============ -->
-      <div class="tabpanel" id="tab-settings">
-        <div class="panel">
-          <div class="paneltitle">Account</div>
-          <div class="settingsrow"><div class="label">All-time P&amp;L</div><div class="settingsval" id="settings-alltime">$0.00</div></div>
-          <div class="settingsrow"><button class="signoutbtn2" id="signoutbtn">Sign out</button></div>
-        </div>
-        <div class="panel">
-          <div class="paneltitle">Your Assets</div>
-          <div id="assetlist"></div>
-          <div class="addasset-row">
-            <input class="addasset-input" id="newasset-input" placeholder="e.g. NQ, BTC, AAPL" />
-            <button class="addasset-btn" id="newasset-add">Add</button>
-          </div>
-        </div>
+      <div class="summary-card">
+        <div class="summary-label">Monthly Goal</div>
+        <button class="summary-editbtn" id="summary-goal-edit">✎</button>
+        <div id="summary-goal-body"></div>
       </div>
     </div>
 
-    <div class="bottomnav">
-      <button class="navitem active" data-tab="calendar"><span class="navicon">📅</span>Calendar</button>
-      <button class="navitem" data-tab="analytics"><span class="navicon">📈</span>Analytics</button>
-      <button class="navitem" data-tab="settings"><span class="navicon">⚙️</span>Settings</button>
+    <div class="chiprow">
+      <div class="chip" style="position:relative; padding-right:34px;">
+        <span>Asset:</span> <b id="assetFilterLabel">All</b> <span class="caret">▾</span>
+        <select id="assetFilterSelect" style="position:absolute; inset:0; opacity:0; width:100%; height:100%;">
+          <option value="">All</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="monthnav">
+      <button class="navbtn" id="prevmonth" aria-label="Previous month">‹</button>
+      <div class="monthlabel" id="monthlabel"></div>
+      <button class="navbtn" id="nextmonth" aria-label="Next month">›</button>
+    </div>
+
+    <div class="cal-card">
+      <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+      <div class="grid" id="grid"></div>
     </div>
   </div>
 
-  <div class="overlay" id="overlay">
-    <div class="sheet">
-      <div class="grabber"></div>
-      <div class="modalhead">
-        <div class="modaldate" id="modaldate"></div>
-        <button class="closebtn" id="closemodal">✕</button>
-      </div>
-      <label class="flabel">Asset</label>
-      <select class="finput" id="f-asset">
-        <option value="">No asset tagged</option>
-      </select>
-      <label class="flabel">P&amp;L</label>
-      <input class="finput" id="f-pnl" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
-      <label class="flabel">Trades</label>
-      <input class="finput" id="f-trades" type="number" min="0" placeholder="0" inputmode="numeric" />
-      <label class="flabel">Journal Note</label>
-      <textarea class="finput" id="f-note" rows="3" placeholder="Risk, outcome, emotion…"></textarea>
-      <div class="photo-row">
-        <label class="flabel">Chart Screenshot</label>
-        <div class="photo-area" id="photoArea">
-          <button class="photo-btn" id="photoAddBtn" type="button"><span class="plus">＋</span><span>Add photo</span></button>
-          <span class="photo-hint">Attach a chart or trade screenshot</span>
-        </div>
-        <input type="file" accept="image/*" id="photoInput" style="display:none" />
-      </div>
-      <div class="modalbtns">
-        <button class="btn-save" id="savebtn">Save</button>
-        <button class="btn-clear" id="clearbtn">Clear</button>
+  <div class="tabpanel" id="tab-analytics">
+    <div class="panel"><div class="paneltitle">This Month</div><div id="stats"></div></div>
+    <div class="panel"><div class="paneltitle">Drawdown</div><div id="drawdown"></div></div>
+  </div>
+
+  <div class="tabpanel" id="tab-settings">
+    <div class="panel">
+      <div class="paneltitle">Account</div>
+      <div class="settingsrow"><div class="label">All-time P&amp;L</div><div class="settingsval" id="settings-alltime">$0.00</div></div>
+      <div class="settingsrow"><button class="signoutbtn2" id="signoutbtn">Sign out</button></div>
+    </div>
+    <div class="panel">
+      <div class="paneltitle">Your Assets</div>
+      <div id="assetlist"></div>
+      <div class="addasset-row">
+        <input class="addasset-input" id="newasset-input" placeholder="e.g. NQ, BTC, AAPL" />
+        <button class="addasset-btn" id="newasset-add">Add</button>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="lightbox" id="lightbox">
-    <button class="lightbox-close" id="lightboxClose">✕</button>
-    <img id="lightboxImg" src="" alt="Trade screenshot" />
+<div class="bottomnav">
+  <button class="navitem active" data-tab="calendar"><span class="navicon">📅</span>Calendar</button>
+  <button class="navitem" data-tab="analytics"><span class="navicon">📈</span>Analytics</button>
+  <button class="navitem" data-tab="settings"><span class="navicon">⚙️</span>Settings</button>
+</div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="modalhead">
+      <div class="modaldate" id="modaldate"></div>
+      <button class="closebtn" id="closemodal">✕</button>
+    </div>
+    <label class="flabel">Asset</label>
+    <select class="finput" id="f-asset">
+      <option value="">No asset tagged</option>
+    </select>
+    <label class="flabel">P&amp;L</label>
+    <input class="finput" id="f-pnl" type="number" step="0.01" placeholder="0.00" inputmode="decimal" />
+    <label class="flabel">Trades</label>
+    <input class="finput" id="f-trades" type="number" min="0" placeholder="0" inputmode="numeric" />
+    <label class="flabel">Journal Note</label>
+    <textarea class="finput" id="f-note" rows="3" placeholder="Risk, outcome, emotion…"></textarea>
+    <div class="photo-row">
+      <label class="flabel">Chart Screenshot</label>
+      <div class="photo-area" id="photoArea">
+        <button class="photo-btn" id="photoAddBtn" type="button"><span class="plus">＋</span><span>Add photo</span></button>
+        <span class="photo-hint">Attach a chart or trade screenshot</span>
+      </div>
+      <input type="file" accept="image/*" id="photoInput" style="display:none" />
+    </div>
+    <div class="modalbtns">
+      <button class="btn-save" id="savebtn">Save</button>
+      <button class="btn-clear" id="clearbtn">Clear</button>
+    </div>
   </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose">✕</button>
+  <img id="lightboxImg" src="" alt="Trade screenshot" />
+</div>
 
 <script>
 (function() {
-  // =========================================================================
-  // 1) PASTE YOUR FIREBASE PROJECT CONFIG HERE (from Firebase Console →
-  //    Project settings → General → Your apps → SDK setup and configuration)
-  // =========================================================================
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyC4nWqW4seNiGQc-pEkExhT4dJJIU3Pda4",
     authDomain: "pnl-journal-6dcce.firebaseapp.com",
@@ -386,7 +351,6 @@
   db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
   let entries = {};
   let goals = {};
   let assets = ["ES", "NQ", "BTC", "ETH", "AAPL", "TSLA", "EUR/USD", "GOLD"];
@@ -398,7 +362,6 @@
   let uid = null;
   let unsubEntries = null, unsubGoals = null, unsubMeta = null;
 
-  // ---------- Tabs ----------
   document.querySelectorAll(".navitem").forEach((btn) => {
     btn.onclick = () => {
       document.querySelectorAll(".navitem").forEach((b) => b.classList.remove("active"));
@@ -420,7 +383,6 @@
     return `${sign}$${abs}`;
   }
 
-  // ---------- Auth ----------
   let isSignUp = false;
   document.getElementById("authtoggle-btn").onclick = () => {
     isSignUp = !isSignUp;
@@ -472,7 +434,6 @@
     }
   });
 
-  // ---------- Firestore sync ----------
   function setSyncStatus(state) {
     const tag = document.getElementById("synctag");
     const text = document.getElementById("synctext");
@@ -568,13 +529,13 @@
     if (data === null) entriesCol.doc(key).delete().catch(() => {});
     else entriesCol.doc(key).set(data).catch(() => {});
   }
+
   function saveGoalToCloud(key, target) {
     const goalsCol = db.collection("users").doc(uid).collection("goals");
     if (target === null) goalsCol.doc(key).delete().catch(() => {});
     else goalsCol.doc(key).set({ target }).catch(() => {});
   }
 
-  // ---------- Stats ----------
   function computeStats() {
     const mKey = monthKey(cursor);
     const monthEntries = Object.keys(entries).filter(k => k.startsWith(mKey)).sort().map(k => ({ date: k, ...entries[k] }));
@@ -635,6 +596,7 @@
       document.getElementById("summary-setgoal").onclick = () => showGoalInput("");
     }
   }
+
   document.getElementById("summary-goal-edit").onclick = () => showGoalInput(goals[monthKey(cursor)] || "");
 
   function showGoalInput(current) {
@@ -678,9 +640,11 @@
     for (let i=0;i<startOffset;i++) cells.push(null);
     for (let d=1; d<=daysInMonth; d++) cells.push(new Date(year, month, d));
     while (cells.length % 7 !== 0) cells.push(null);
+
     const todayKey = dayKey(new Date());
     const grid = document.getElementById("grid");
     grid.innerHTML = "";
+
     cells.forEach(d => {
       const cell = document.createElement(d ? "button" : "div");
       if (!d) { cell.className = "cell empty"; grid.appendChild(cell); return; }
@@ -767,8 +731,8 @@
     document.getElementById("overlay").classList.add("open");
     setTimeout(() => document.getElementById("f-pnl").focus(), 200);
   }
-  function closeModal() { document.getElementById("overlay").classList.remove("open"); activeKey = null; activePhoto = null; }
 
+  function closeModal() { document.getElementById("overlay").classList.remove("open"); activeKey = null; activePhoto = null; }
   document.getElementById("closemodal").onclick = closeModal;
   document.getElementById("overlay").addEventListener("click", e => { if (e.target.id === "overlay") closeModal(); });
 
@@ -784,6 +748,7 @@
     else saveEntryToCloud(activeKey, { asset: asset || null, pnl, trades: trades || 0, note, photo: activePhoto || null });
     closeModal();
   };
+
   document.getElementById("clearbtn").onclick = () => { if (!activeKey) return; saveEntryToCloud(activeKey, null); closeModal(); };
 
   document.getElementById("prevmonth").onclick = () => { cursor.setMonth(cursor.getMonth()-1); renderAll(); };

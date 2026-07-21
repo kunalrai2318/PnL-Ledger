@@ -21,7 +21,7 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
-      padding-bottom: 70px; /* Space for bottom navigation */
+      padding-bottom: 70px;
     }
 
     /* Header Bar */
@@ -79,7 +79,7 @@
     .calendar-container {
       width: 100%;
       padding: 8px;
-      overflow-x: auto; /* Allows smooth swipe if screen is very narrow */
+      overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -104,11 +104,11 @@
       border: 1px solid #27272a;
       border-radius: 6px;
       padding: 4px;
-      min-height: 85px; /* Compact height for portrait */
+      min-height: 85px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      min-width: 0; /* CRITICAL: Allows grid cells to shrink properly */
+      min-width: 0;
       overflow: hidden;
     }
 
@@ -116,11 +116,6 @@
       font-size: 0.75rem;
       font-weight: 600;
       color: #a1a1aa;
-    }
-
-    .day-cell.today .day-number {
-      color: #3b82f6;
-      font-weight: 800;
     }
 
     /* Trade Card Box Inside Days */
@@ -145,11 +140,10 @@
 
     .pnl-amount {
       font-weight: 700;
-      /* Responsive dynamic text sizing */
       font-size: clamp(0.65rem, 2.2vw, 0.85rem);
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis; /* Truncates text with '...' if cell space runs out */
+      text-overflow: ellipsis;
     }
 
     .trade-card.profit .pnl-amount { color: #4ade80; }
@@ -171,11 +165,7 @@
       text-transform: uppercase;
     }
 
-    /* ==========================================
-       3. MEDIA QUERIES (Portrait vs Landscape)
-       ========================================== */
-    
-    /* Mobile Portrait Specifics (< 500px) */
+    /* Mobile Portrait Specifics */
     @media (max-width: 500px) {
       .day-cell {
         min-height: 68px;
@@ -186,7 +176,6 @@
         font-size: 0.65rem;
       }
 
-      /* Hide secondary tags on small portrait screens to maintain clean layout */
       .asset-badge {
         display: none;
       }
@@ -204,25 +193,21 @@
     }
 
     /* ==========================================
-       4. MODAL & FORM (ALLOW NEGATIVE AMOUNT)
+       3. MODAL & FORM 
        ========================================== */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.75);
-      display: flex;
+      display: none; /* Changed from opacity for bulletproof toggle */
       align-items: center;
       justify-content: center;
       padding: 16px;
       z-index: 1000;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
     }
 
     .modal-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
+      display: flex;
     }
 
     .modal-content {
@@ -251,7 +236,6 @@
       margin-bottom: 6px;
     }
 
-    /* P&L Type Toggle (+ / -) */
     .type-toggle {
       display: flex;
       gap: 8px;
@@ -320,7 +304,7 @@
       cursor: pointer;
     }
 
-    /* Bottom Navigation Bar */
+    /* Bottom Nav Bar */
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -351,21 +335,19 @@
   <!-- Header -->
   <div class="header">
     <h1>Trading Journal</h1>
-    <button class="btn-add" onclick="openModal()">+ Add Trade</button>
+    <button class="btn-add" id="openModalBtn">+ Add Trade</button>
   </div>
 
   <!-- Month Navigation -->
   <div class="month-nav">
-    <button onclick="changeMonth(-1)">&lt;</button>
+    <button id="prevMonthBtn">&lt;</button>
     <div class="month-title" id="monthDisplay">July 2026</div>
-    <button onclick="changeMonth(1)">&gt;</button>
+    <button id="nextMonthBtn">&gt;</button>
   </div>
 
   <!-- Calendar Container -->
   <div class="calendar-container">
-    <div class="calendar-grid" id="calendarGrid">
-      <!-- Calendar dynamically built here -->
-    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
   </div>
 
   <!-- Trade Entry Modal -->
@@ -373,11 +355,10 @@
     <div class="modal-content">
       <div class="modal-header">Log Trade</div>
 
-      <!-- Quick Toggle for Profit (+) vs Loss (-) -->
       <label style="font-size:0.75rem; color:#a1a1aa; margin-bottom:6px; display:block;">Trade Result</label>
       <div class="type-toggle">
-        <button type="button" class="type-btn active-profit" id="btnProfit" onclick="setTradeType('profit')">+ Profit</button>
-        <button type="button" class="type-btn" id="btnLoss" onclick="setTradeType('loss')">- Loss</button>
+        <button type="button" class="type-btn active-profit" id="btnProfit">+ Profit</button>
+        <button type="button" class="type-btn" id="btnLoss">- Loss</button>
       </div>
 
       <div class="form-group">
@@ -387,8 +368,7 @@
 
       <div class="form-group">
         <label for="tradeAmount">Amount ($)</label>
-        <!-- step="any" allows typing minus (-) sign directly into field -->
-        <input type="number" step="any" id="tradeAmount" class="form-input" placeholder="e.g. 300 or -300" oninput="handleAmountInput(this)" />
+        <input type="number" step="any" id="tradeAmount" class="form-input" placeholder="e.g. 300 or -300" />
       </div>
 
       <div class="form-group">
@@ -397,13 +377,13 @@
       </div>
 
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-submit" onclick="saveTrade()">Save Trade</button>
+        <button type="button" class="btn-cancel" id="closeModalBtn">Cancel</button>
+        <button type="button" class="btn-submit" id="saveTradeBtn">Save Trade</button>
       </div>
     </div>
   </div>
 
-  <!-- Bottom Nav -->
+  <!-- Bottom Navigation -->
   <div class="bottom-nav">
     <a href="#" class="nav-item active">📅 Calendar</a>
     <a href="#" class="nav-item">📊 Analytics</a>
@@ -411,163 +391,169 @@
   </div>
 
   <script>
-    // Initial State & Sample Data
-    let currentDate = new Date(2026, 6, 1); // July 2026
-    let selectedTradeType = 'profit';
+    document.addEventListener("DOMContentLoaded", () => {
+      let currentDate = new Date(2026, 6, 1);
+      let selectedTradeType = 'profit';
 
-    let trades = [
-      { date: '2026-07-20', amount: 313.50, asset: 'MNQ', count: 1 },
-      { date: '2026-07-21', amount: -300.00, asset: 'MNQ', count: 2 }
-    ];
+      let trades = [
+        { date: '2026-07-20', amount: 313.50, asset: 'MNQ', count: 1 },
+        { date: '2026-07-21', amount: -300.00, asset: 'MNQ', count: 2 }
+      ];
 
-    // Initialize Calendar
-    renderCalendar();
+      // Elements
+      const openModalBtn = document.getElementById('openModalBtn');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+      const saveTradeBtn = document.getElementById('saveTradeBtn');
+      const prevMonthBtn = document.getElementById('prevMonthBtn');
+      const nextMonthBtn = document.getElementById('nextMonthBtn');
+      const btnProfit = document.getElementById('btnProfit');
+      const btnLoss = document.getElementById('btnLoss');
+      const tradeAmountInput = document.getElementById('tradeAmount');
+      const tradeModal = document.getElementById('tradeModal');
 
-    function renderCalendar() {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
+      // Bind Event Listeners Directly
+      openModalBtn.addEventListener('click', openModal);
+      closeModalBtn.addEventListener('click', closeModal);
+      saveTradeBtn.addEventListener('click', saveTrade);
+      prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+      nextMonthBtn.addEventListener('click', () => changeMonth(1));
 
-      // Month Title Display
-      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      document.getElementById('monthDisplay').innerText = `${monthNames[month]} ${year}`;
+      btnProfit.addEventListener('click', () => setTradeType('profit'));
+      btnLoss.addEventListener('click', () => setTradeType('loss'));
+      tradeAmountInput.addEventListener('input', (e) => handleAmountInput(e.target));
 
-      const grid = document.getElementById('calendarGrid');
-      grid.innerHTML = '';
+      renderCalendar();
 
-      // Day Headers
-      const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-      days.forEach(day => {
-        grid.innerHTML += `<div class="day-header">${day}</div>`;
-      });
+      function renderCalendar() {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
 
-      // Get Day Offset for Mon-Sun grid
-      const firstDayOfMonth = new Date(year, month, 1);
-      let startingDay = firstDayOfMonth.getDay() - 1;
-      if (startingDay === -1) startingDay = 6; // Adjust Sunday
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        document.getElementById('monthDisplay').innerText = `${monthNames[month]} ${year}`;
 
-      const totalDays = new Date(year, month + 1, 0).getDate();
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
 
-      // Empty padding cells
-      for (let i = 0; i < startingDay; i++) {
-        grid.innerHTML += `<div class="day-cell" style="opacity:0.2;"></div>`;
-      }
+        const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+        days.forEach(day => {
+          grid.innerHTML += `<div class="day-header">${day}</div>`;
+        });
 
-      // Populate Days
-      for (let day = 1; day <= totalDays; day++) {
-        const monthStr = String(month + 1).padStart(2, '0');
-        const dayStr = String(day).padStart(2, '0');
-        const dateKey = `${year}-${monthStr}-${dayStr}`;
+        const firstDayOfMonth = new Date(year, month, 1);
+        let startingDay = firstDayOfMonth.getDay() - 1;
+        if (startingDay === -1) startingDay = 6;
 
-        const dayTrade = trades.find(t => t.date === dateKey);
+        const totalDays = new Date(year, month + 1, 0).getDate();
 
-        let tradeHTML = '';
-        if (dayTrade) {
-          const isLoss = dayTrade.amount < 0;
-          const formattedAmount = `${dayTrade.amount >= 0 ? '+' : '-'}$${Math.abs(dayTrade.amount).toFixed(2)}`;
-          const cardClass = isLoss ? 'loss' : 'profit';
+        for (let i = 0; i < startingDay; i++) {
+          grid.innerHTML += `<div class="day-cell" style="opacity:0.2;"></div>`;
+        }
 
-          tradeHTML = `
-            <div class="trade-card ${cardClass}">
-              <span class="pnl-amount">${formattedAmount}</span>
-              <div class="trade-meta">
-                <span>${dayTrade.count || 1} trade${dayTrade.count > 1 ? 's' : ''}</span>
-                <span class="asset-badge">${dayTrade.asset}</span>
+        for (let day = 1; day <= totalDays; day++) {
+          const monthStr = String(month + 1).padStart(2, '0');
+          const dayStr = String(day).padStart(2, '0');
+          const dateKey = `${year}-${monthStr}-${dayStr}`;
+
+          const dayTrade = trades.find(t => t.date === dateKey);
+
+          let tradeHTML = '';
+          if (dayTrade) {
+            const isLoss = dayTrade.amount < 0;
+            const formattedAmount = `${dayTrade.amount >= 0 ? '+' : '-'}$${Math.abs(dayTrade.amount).toFixed(2)}`;
+            const cardClass = isLoss ? 'loss' : 'profit';
+
+            tradeHTML = `
+              <div class="trade-card ${cardClass}">
+                <span class="pnl-amount">${formattedAmount}</span>
+                <div class="trade-meta">
+                  <span>${dayTrade.count || 1} trade${dayTrade.count > 1 ? 's' : ''}</span>
+                  <span class="asset-badge">${dayTrade.asset}</span>
+                </div>
               </div>
+            `;
+          }
+
+          grid.innerHTML += `
+            <div class="day-cell">
+              <span class="day-number">${day}</span>
+              ${tradeHTML}
             </div>
           `;
         }
-
-        grid.innerHTML += `
-          <div class="day-cell">
-            <span class="day-number">${day}</span>
-            ${tradeHTML}
-          </div>
-        `;
       }
-    }
 
-    // Handle Month Navigation
-    function changeMonth(delta) {
-      currentDate.setMonth(currentDate.getMonth() + delta);
-      renderCalendar();
-    }
+      function changeMonth(delta) {
+        currentDate.setMonth(currentDate.getMonth() + delta);
+        renderCalendar();
+      }
 
-    // Modal Operations
-    function openModal() {
-      document.getElementById('tradeDate').value = '2026-07-21';
-      document.getElementById('tradeAmount').value = '';
-      setTradeType('profit');
-      document.getElementById('tradeModal').classList.add('active');
-    }
+      function openModal() {
+        document.getElementById('tradeDate').value = '2026-07-21';
+        tradeAmountInput.value = '';
+        setTradeType('profit');
+        tradeModal.classList.add('active');
+      }
 
-    function closeModal() {
-      document.getElementById('tradeModal').classList.remove('active');
-    }
+      function closeModal() {
+        tradeModal.classList.remove('active');
+      }
 
-    // Profit / Loss Toggle Controls
-    function setTradeType(type) {
-      selectedTradeType = type;
-      const btnProfit = document.getElementById('btnProfit');
-      const btnLoss = document.getElementById('btnLoss');
-      const amountInput = document.getElementById('tradeAmount');
-
-      if (type === 'profit') {
-        btnProfit.className = 'type-btn active-profit';
-        btnLoss.className = 'type-btn';
-        if (amountInput.value < 0) {
-          amountInput.value = Math.abs(amountInput.value);
-        }
-      } else {
-        btnProfit.className = 'type-btn';
-        btnLoss.className = 'type-btn active-loss';
-        if (amountInput.value > 0) {
-          amountInput.value = -Math.abs(amountInput.value);
+      function setTradeType(type) {
+        selectedTradeType = type;
+        if (type === 'profit') {
+          btnProfit.className = 'type-btn active-profit';
+          btnLoss.className = 'type-btn';
+          if (tradeAmountInput.value < 0) {
+            tradeAmountInput.value = Math.abs(tradeAmountInput.value);
+          }
+        } else {
+          btnProfit.className = 'type-btn';
+          btnLoss.className = 'type-btn active-loss';
+          if (tradeAmountInput.value > 0) {
+            tradeAmountInput.value = -Math.abs(tradeAmountInput.value);
+          }
         }
       }
-    }
 
-    // Automatically update toggle if user types '-' directly in the input box
-    function handleAmountInput(input) {
-      const val = parseFloat(input.value);
-      if (!isNaN(val)) {
-        if (val < 0 && selectedTradeType !== 'loss') {
-          setTradeType('loss');
-        } else if (val > 0 && selectedTradeType !== 'profit') {
-          setTradeType('profit');
+      function handleAmountInput(input) {
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) {
+          if (val < 0 && selectedTradeType !== 'loss') {
+            setTradeType('loss');
+          } else if (val > 0 && selectedTradeType !== 'profit') {
+            setTradeType('profit');
+          }
         }
       }
-    }
 
-    // Save Trade
-    function saveTrade() {
-      const date = document.getElementById('tradeDate').value;
-      let amount = parseFloat(document.getElementById('tradeAmount').value);
-      const asset = document.getElementById('tradeAsset').value || 'MNQ';
+      function saveTrade() {
+        const date = document.getElementById('tradeDate').value;
+        let amount = parseFloat(tradeAmountInput.value);
+        const asset = document.getElementById('tradeAsset').value || 'MNQ';
 
-      if (!date || isNaN(amount)) {
-        alert('Please enter a valid date and amount.');
-        return;
+        if (!date || isNaN(amount)) {
+          alert('Please enter a valid date and amount.');
+          return;
+        }
+
+        if (selectedTradeType === 'loss' && amount > 0) {
+          amount = -amount;
+        } else if (selectedTradeType === 'profit' && amount < 0) {
+          amount = Math.abs(amount);
+        }
+
+        const existing = trades.find(t => t.date === date);
+        if (existing) {
+          existing.amount = amount;
+          existing.asset = asset;
+        } else {
+          trades.push({ date, amount, asset, count: 1 });
+        }
+
+        closeModal();
+        renderCalendar();
       }
-
-      // Ensure sign matches selected trade type toggle
-      if (selectedTradeType === 'loss' && amount > 0) {
-        amount = -amount;
-      } else if (selectedTradeType === 'profit' && amount < 0) {
-        amount = Math.abs(amount);
-      }
-
-      // Update existing or push new trade
-      const existing = trades.find(t => t.date === date);
-      if (existing) {
-        existing.amount = amount;
-        existing.asset = asset;
-      } else {
-        trades.push({ date, amount, asset, count: 1 });
-      }
-
-      closeModal();
-      renderCalendar();
-    }
+    });
   </script>
 </body>
 </html>

@@ -19,7 +19,7 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
-      padding-bottom: 90px; /* Increased bottom padding to accommodate larger nav bar */
+      padding-bottom: 100px;
     }
 
     /* HEADER */
@@ -30,6 +30,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      position: relative;
+      z-index: 10;
     }
 
     .header h1 {
@@ -55,13 +57,15 @@
       align-items: center;
       padding: 12px 16px;
       background-color: #121215;
+      position: relative;
+      z-index: 10;
     }
 
     .month-nav button {
       background: #27272a;
       border: none;
       color: #fff;
-      padding: 6px 14px;
+      padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
@@ -78,6 +82,8 @@
       padding: 8px;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+      position: relative;
+      z-index: 10;
     }
 
     .calendar-grid {
@@ -107,6 +113,7 @@
       justify-content: space-between;
       min-width: 0;
       overflow: hidden;
+      cursor: pointer;
     }
 
     .day-number {
@@ -184,7 +191,7 @@
       }
     }
 
-    /* MODAL */
+    /* MODAL - PREVENTS INVISIBLE BLOCKING */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -193,11 +200,13 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
-      z-index: 9999;
+      z-index: 99999;
+      pointer-events: none; /* Disables click interception when closed */
     }
 
     .modal-overlay.open {
       display: flex !important;
+      pointer-events: auto !important; /* Enables touch inside modal */
     }
 
     .modal-content {
@@ -294,7 +303,7 @@
       cursor: pointer;
     }
 
-    /* LARGER BOTTOM NAVIGATION BAR */
+    /* ENLARGED BOTTOM NAVIGATION BAR */
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -302,13 +311,14 @@
       border-top: 1px solid #27272a;
       display: flex;
       justify-content: space-around;
-      padding: 12px 0 16px 0; /* Expanded padding for comfortable touch area */
-      z-index: 100;
+      padding: 12px 0 16px 0;
+      z-index: 1000;
+      pointer-events: auto;
     }
 
     .nav-item {
       color: #a1a1aa;
-      font-size: 0.85rem; /* Increased text size */
+      font-size: 0.85rem;
       font-weight: 600;
       text-decoration: none;
       display: flex;
@@ -316,10 +326,13 @@
       align-items: center;
       gap: 4px;
       flex: 1;
+      cursor: pointer;
+      background: none;
+      border: none;
     }
 
     .nav-icon {
-      font-size: 1.5rem; /* Enlarged icon size */
+      font-size: 1.5rem;
       line-height: 1;
     }
 
@@ -381,20 +394,20 @@
     </div>
   </div>
 
-  <!-- Enlarged Bottom Navigation -->
+  <!-- Bottom Navigation -->
   <div class="bottom-nav">
-    <a href="#" class="nav-item active">
+    <button class="nav-item active" onclick="switchTab('Calendar')">
       <span class="nav-icon">📅</span>
       <span>Calendar</span>
-    </a>
-    <a href="#" class="nav-item">
+    </button>
+    <button class="nav-item" onclick="switchTab('Analytics')">
       <span class="nav-icon">📊</span>
       <span>Analytics</span>
-    </a>
-    <a href="#" class="nav-item">
+    </button>
+    <button class="nav-item" onclick="switchTab('Settings')">
       <span class="nav-icon">⚙️</span>
       <span>Settings</span>
-    </a>
+    </button>
   </div>
 
   <script>
@@ -406,8 +419,8 @@
       { date: '2026-07-21', amount: -300.00, asset: 'MNQ', count: 2 }
     ];
 
-    function openModal() {
-      document.getElementById('tradeDate').value = '2026-07-21';
+    function openModal(dateStr) {
+      document.getElementById('tradeDate').value = dateStr || '2026-07-21';
       document.getElementById('tradeAmount').value = '';
       setTradeType('profit');
       document.getElementById('tradeModal').classList.add('open');
@@ -415,6 +428,10 @@
 
     function closeModal() {
       document.getElementById('tradeModal').classList.remove('open');
+    }
+
+    function switchTab(tabName) {
+      alert("Switched to " + tabName + " view!");
     }
 
     function setTradeType(type) {
@@ -498,7 +515,7 @@
         }
 
         grid.innerHTML += 
-          '<div class="day-cell">' +
+          '<div class="day-cell" onclick="openModal(\'' + dateKey + '\')">' +
             '<span class="day-number">' + day + '</span>' +
             tradeHTML +
           '</div>';
